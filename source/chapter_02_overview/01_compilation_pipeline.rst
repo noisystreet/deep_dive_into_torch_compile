@@ -9,6 +9,68 @@
    **为什么选择三阶段架构？**
    在 torch.compile 之前，PyTorch 的编译器尝试（TorchScript）试图在一个阶段内完成"图捕获 + 自动微分 + 代码生成"。这种做法耦合度高，任何一个环节出错整个编译就失败了。三阶段架构的设计灵感来自 LLVM——**每个阶段只做一件事，且通过标准化的中间表示（FX Graph）通信**。Dynamo 输出 FX Graph，AOTAutograd 消费并变换它，Inductor 消费变换后的图。这种松耦合的设计使得每个组件可以独立测试、独立演进。例如，社区已经开发了 ``torch-xla`` 后端，它直接消费 FX Graph 并生成为 XLA 代码，完全跳过了 Inductor。
 
+编译栈的设计原则
+==========================
+
+第 1.1 节我们从历史角度回顾了 TorchScript → torch.compile 的三次路线演变。这里把散落在各章的设计决策收成 **六条原则**，作为阅读后续章节的「透镜」——遇到具体机制时，可以问：它体现了哪条原则？放弃了什么？代价是什么？
+
+.. list-table::
+   :header-rows: 1
+   :widths: 22 38 40
+
+   * - 原则
+     - 含义
+     - 主要体现
+   * - **编译器适应 Python**
+     - 不强迫用户改写代码；无法捕获时 graph break，而非报错退出
+     - Dynamo 帧拦截、graph break（第 3 章）
+   * - **阶段专精 + 标准 IR**
+     - 捕获、求导、代码生成分离；FX Graph 作为组件间契约
+     - 三目录架构（本节下文）、自定义 backend（第 9.1 节）
+   * - **策略与机制分离**
+     - 中间层只提供机制；谁消费图，谁定策略
+     - decomposition 配置在 Inductor、执行在 AOTAutograd（第 4.6 节）
+   * - **正确性优先于性能**
+     - guard 失败则重编译；缓存超限则 fallback eager，宁可慢也不能错
+     - guard（第 3.4 节）、缓存 fallback（第 3.6 节）、三层缓存（第 2.4 节）
+   * - **Define-by-Run**
+     - IR 随 lower 过程逐级构建，保留 PyTorch「边执行边定义」的语义
+     - Inductor IRNode（第 5.1 节）
+   * - **编译重、运行轻**
+     - 编译可以慢（autotune、重编译）；推理/训练 loop 必须快
+     - 磁盘缓存（第 2.4 节）、AOTInductor（第 9.5 节）、``max-autotune`` （第 9.2 节）
+
+用一个具体场景串起这些原则。假设用户写了：
+
+.. code-block:: python
+
+   @torch.compile
+   def train_step(x, y):
+       print("step")          # Python 副作用
+       return (x * y).sum()
+
+第一次调用 ``train_step(x, y)`` 时发生了什么？
+
+1. **编译器适应 Python**：Dynamo 不会因为有 ``print`` 就拒绝编译，而是在 ``print`` 处 graph break，前后各形成一个子图（第 3.5 节）。
+2. **阶段专精**：Dynamo 只负责捕获前向 FX Graph；AOTAutograd 在编译期追联合反向图；Inductor 只负责生成 kernel——各干各的。
+3. **策略与机制分离**：Inductor 的 ``select_decomp_table()`` 决定 ``(x*y).sum()`` 要不要分解为基本算子，AOTAutograd 只执行分解，不关心 Triton 怎么写。
+4. **正确性优先**：若下次 ``x.shape`` 变了，guard 失败触发重编译；若重编译次数过多，fallback 到 eager 而不是 silent wrong result。
+5. **Define-by-Run**：Inductor 在遍历 FX 节点时逐个 ``lower`` 出 IRNode，而不是先建完整静态 IR 再优化。
+6. **编译重、运行轻**：首次调用可能要数秒编译；从第二次起命中缓存，执行接近手写 kernel 的速度。
+
+.. code-block:: text
+
+   设计原则              在本例中的体现
+   ─────────────────────────────────────────────
+   适应 Python           print → graph break，其余仍编译
+   阶段专精              Dynamo 捕获 → AOT 求导 → Inductor codegen
+   策略/机制分离         Inductor 定 decomposition，AOT 执行
+   正确性优先            shape 变 → guard → 重编译
+   Define-by-Run         逐节点 lower 为 IRNode
+   编译重、运行轻        首次慢，后续命中缓存
+
+后续第 3–6 章会分别深入三大组件；读每一章时，不妨回到这张表，看看源码里的类名和函数名分别对应哪条原则。
+
 第 1 章我们从"编译 vs 解释"的角度了解了 torch.compile 的基本概念。这一节我们打开引擎盖，看看一次完整的编译过程到底是怎么走完的。我们会追踪一次 ``torch.compile(fn)(x)`` 调用，从 Python 函数入口一直跟踪到生成的 Triton kernel。
 
 源码结构总览
@@ -351,6 +413,7 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
 - Dynamo 通过 **PEP 523** 在字节码层级拦截帧执行
 - **符号执行引擎** 用 FakeTensor 模拟 Tensor 操作，同时构建 FX Graph
 - **三阶段流水线** （Dynamo → AOTAutograd → Inductor）松耦合，每阶段可独立替换
+- **六条设计原则** （见上文）贯穿三大组件，是理解各章实现细节的纲
 - **编译结果被缓存**，后续调用直接命中缓存跳过编译
 
 下一节我们换个视角，看看编译过程中数据（张量）和控制流在不同组件之间是如何流转的。后面 2.4 节还会专题讨论贯穿三个组件的编译缓存架构。

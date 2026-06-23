@@ -12,7 +12,56 @@
 .. note::
 
    **AOTAutograd 是三个组件中提交最少但最稳定的。**
-   在 PyTorch 编译栈的三个核心模块中，AOTAutograd 的提交次数只有 1,317 次，约为 Inductor（8,787 次）的 15%、Dynamo（6,439 次）的 20%。这并非因为它不重要——而是因为 AOTAutograd 是一个**中间层**，接口相对固定。它的核心逻辑（joint graph 创建、functionalization、分区）在 2023 年初就已经基本定型，后续的提交主要是 bug fix 和对新算子的支持适配。与此对比，Inductor 需要持续迭代代码生成策略以覆盖新算子，Dynamo 需要持续适配 CPython 新版本的字节码变化——AOTAutograd 夹在两者之间，反而是最不需要频繁改动的一层。
+   在 PyTorch 编译栈的三个核心模块中，AOTAutograd 的提交次数只有 1,317 次，约为 Inductor（8,787 次）的 15%、Dynamo（6,439 次）的 20%。这并非因为它不重要——而是因为 AOTAutograd 是一个 **中间层**，接口相对固定。它的核心逻辑（joint graph 创建、functionalization、分区）在 2023 年初就已经基本定型，后续的提交主要是 bug fix 和对新算子的支持适配。与此对比，Inductor 需要持续迭代代码生成策略以覆盖新算子，Dynamo 需要持续适配 CPython 新版本的字节码变化——AOTAutograd 夹在两者之间，反而是最不需要频繁改动的一层。
+
+AOTAutograd 的设计定位
+==========================
+
+Dynamo 输出的 FX Graph 只描述 **前向** 的 Tensor 运算。若编译栈到此为止，推理场景够用，训练场景却缺了半边：反向传播怎么办？
+
+eager 模式下，autograd 的 tape 在前向执行时 **逐 op 追加**，``backward()`` 再 **逐 op 回放**。这对用户透明，但对编译器是盲区——每个 ``Function.backward`` 只见局部，看不见「这个 activation 保存还是重算更划算」「反向里连续两个 pointwise 能否和 Inductor 融合」。
+
+AOTAutograd 的设计目标：**把 autograd 从运行时搬到编译时**，在一张 **联合图（joint graph）** 上做全局分析，再拆成可独立编译的前向/反向子图。
+
+.. code-block:: text
+
+   eager autograd:
+       前向执行 → 实时写 tape → backward 逐段解释执行
+       （编译器看不到完整前向+反向）
+
+   AOTAutograd:
+       编译期 trace 联合图 → 分区 → 分别交给 Inductor
+       （编译器看到全局，可做跨前向/反向优化）
+
+**为什么必须是「中间层」**。AOTAutograd 故意 **不** 生成 Triton 代码、 **不** 捕获 Python 字节码。它只消费 FX Graph，输出仍是 FX Graph——这体现了第 2.1 节的 **阶段专精** 与 **策略/机制分离**：
+
+- **机制** （AOTAutograd）：functionalization、joint trace、图分区、runtime wrapper。
+- **策略** （Inductor 等后端）：decomposition 表选哪些算子展开、FX pass 做哪些模式替换。
+
+若把 decomposition 硬编码进 AOTAutograd，换 XLA/TensorRT 后端就得改 AOT 层——这正是 TorchScript 式「大一统编译器」曾陷入的耦合困境。
+
+**核心设计决策与代价**：
+
+.. list-table::
+   :header-rows: 1
+
+   * - 决策
+     - 解决什么
+     - 代价
+   * - functionalization（第 4.4 节）
+     - inplace 破坏图语义
+     - 额外 copy / view 节点
+   * - joint graph（本节）
+     - 反向看不到前向全局
+     - 编译期 trace 更慢、图更大
+   * - 图分区 + min-cut（第 4.2–4.3 节）
+     - 显存 vs 重计算权衡
+     - 分区策略影响 Inductor 融合机会
+   * - 前后向子图分离编译
+     - 前向/反向可不同优化
+     - 两次 Inductor 编译，缓存 key 更复杂
+
+读第 4 章后续各节时，可以带着一个问题：**这一步是为了让 Inductor 看到什么样的图？** functionalization 是为了图纯函数化；decomposition 是为了算子粒度匹配 lowering；分区是为了控制 saved tensor 集合——都是为后端服务的「图卫生」工序。
 
 AOTAutograd 的全称是 **Ahead-of-Time Autograd** ——"提前"的自动微分。它在模型实际运行之前，通过追踪 autograd 的计算过程，生成一张包含**前向（forward）和反向（backward）的联合计算图**。
 
