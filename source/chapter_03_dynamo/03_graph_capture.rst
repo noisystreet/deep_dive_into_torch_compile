@@ -3,3 +3,251 @@
 =============
 图捕获
 =============
+
+这一节是第 3 章的核心。我们来看 Dynamo 符号执行引擎最关键的运作机制——它是怎么把 ``torch.sin(x)`` 这样一个 Python 调用变成 FX Graph 中的一个 ``call_function`` 节点的？
+
+VariableTracker：一切皆变量
+===============================
+
+在 Dynamo 的符号执行环境中，**每个 Python 对象都被包装成一个 ``VariableTracker``**。无论是 Tensor、int、函数、还是 Module，它们在 InstructionTranslator 的模拟栈上都是以 ``VariableTracker`` 子类的形式存在的。
+
+.. code-block:: text
+
+   真实 Python 值           Dynamo 中的 VariableTracker
+   ──────────────────       ────────────────────────────────
+   torch.Tensor             TensorVariable
+   int / float              ConstantVariable
+   function / method        UserDefinedFunctionVariable
+   nn.Module                NNModuleVariable
+   list / tuple             ListVariable / TupleVariable
+   torch.dtype              ConstantVariable
+   ...                      ...
+
+这个抽象层的作用是：InstructionTranslator 不需要区分"这是一个 Tensor 还是一个 int"——它看到的所有值都是 ``VariableTracker``，只需要调用统一的接口（如 ``call_function``、``var_getattr``），具体的行为由各个子类实现。
+
+核心实现位于 ``pytorch/torch/_dynamo/variables/`` 目录：
+
+.. code-block:: text
+
+   torch/_dynamo/variables/
+   ├── tensor.py       # TensorVariable：张量操作追踪
+   ├── torch.py        # TorchVariable：torch.* API 调用
+   ├── nn_module.py    # NNModuleVariable：nn.Module 调用
+   ├── builtin.py      # BuiltinVariable：内置函数（add, mul 等）
+   ├── functions.py    # 用户函数和闭包
+   ├── lists.py        # 列表/元组操作
+   └── ...
+
+追踪一条 ``torch.sin(x)``
+==============================
+
+我们从字节码层面追踪 Dynamo 处理 ``torch.sin(x)`` 的完整路径。
+
+**第一步：加载 torch 模块**
+
+.. code-block:: text
+
+   字节码：LOAD_GLOBAL  torch
+           ↓
+   InstructionTranslator.LOAD_GLOBAL(inst)
+           ↓
+   查找 frame.f_globals["torch"]，包装为 TorchVariable
+           ↓
+   压栈：stack = [TorchVariable(torch)]
+
+**第二步：加载 sin 属性**
+
+.. code-block:: text
+
+   字节码：LOAD_ATTR  sin
+           ↓
+   InstructionTranslator.LOAD_ATTR(inst)
+           ↓
+   在 TorchVariable 上调用 var_getattr("sin")
+           ↓
+   返回 BuiltinVariable(torch.sin)
+           ↓
+   压栈：stack = [TorchVariable, BuiltinVariable(torch.sin)]
+
+**第三步：加载参数 x**
+
+.. code-block:: text
+
+   字节码：LOAD_FAST  x
+           ↓
+   InstructionTranslator.LOAD_FAST(inst)
+           ↓
+   从 symbolic_locals 中取出 x 对应的 TensorVariable
+           ↓
+   压栈：stack = [TorchVariable, BuiltinVariable(torch.sin), TensorVariable(x)]
+
+**第四步：调用函数**
+
+.. code-block:: text
+
+   字节码：CALL_FUNCTION  1
+           ↓
+   InstructionTranslator.CALL_FUNCTION(inst)
+       args = popn(1)   → [TensorVariable(x)]
+       fn   = pop()      → BuiltinVariable(torch.sin)
+           ↓
+   self.call_function(fn, args, {})
+           ↓
+   fn.call_function(self, args, kwargs)
+       # 派发到 BuiltinVariable.call_function
+           ↓
+   BuiltinVariable 检查 fn.value（即 torch.sin）的操作类型
+       → 发现这是一个 torch 下的函数调用
+       → 使用 SubgraphTracer.create_proxy 创建 FX 节点
+           ↓
+   在 FX Graph 中插入：
+       %sin = call_function[target=torch.sin](args = (%x,))
+           ↓
+   将结果包装为 TensorVariable(sin_proxy) 压回栈
+
+执行完所有字节码后，FX Graph 中就有了三个节点：
+
+.. code-block:: text
+
+   graph():
+       %x : [num_users=1] = placeholder[target=x]
+       %sin : [num_users=2] = call_function[target=torch.sin](args = (%x,), kwargs = {})
+       %cos : [num_users=1] = call_function[target=torch.cos](args = (%x,), kwargs = {})
+       %add : [num_users=1] = call_function[target=torch.add](args = (%sin, %cos), kwargs = {})
+       return add
+
+创建 FX 节点：SubgraphTracer 的角色
+==========================================
+
+核心的 FX 节点创建发生在 ``output_graph.py`` 中的 ``SubgraphTracer`` 类，它继承自 ``torch.fx.Tracer``：
+
+.. code-block:: python
+   :caption: pytorch/torch/_dynamo/output_graph.py（简化示意）
+
+   class SubgraphTracer(fx.Tracer):
+       def create_proxy(self, kind, target, args, kwargs, ...):
+           """创建并返回一个 torch.fx.Proxy"""
+           # 标准的 fx.Tracer.create_proxy 逻辑
+           # 会在图中插入一个新的节点
+           return super().create_proxy(kind, target, args, kwargs, ...)
+
+       def create_node(self, kind, target, args, kwargs, ...):
+           """直接创建 FX Node"""
+           # 在 SubgraphTracer 的 graph 中创建节点
+           return super().create_node(kind, target, args, kwargs, ...)
+
+当 ``BuiltinVariable`` 需要为 ``torch.sin(x)`` 创建 FX 节点时，调用链如下：
+
+.. code-block:: text
+
+   BuiltinVariable.call_function(fn=torch.sin, args=[x])
+       │
+       ├─ 1. 识别操作类型
+       │      torch.sin 是一个 torch.* 函数
+       │
+       ├─ 2. 创建 Proxy
+       │      proxy = output_graph.tracer.create_proxy(
+       │          "call_function",
+       │          torch.sin,
+       │          args=(x_proxy,),
+       │          kwargs={},
+       │      )
+       │      # 此时 FX Graph 中已经插入了一个新节点
+       │
+       ├─ 3. 包装为 TensorVariable
+       │      result = TensorVariable(proxy)
+       │      # TensorVariable 持有这个 proxy，后续操作通过它引用
+       │
+       └─ 4. 返回给调用者
+              压入栈顶
+
+Proxy 的作用很重要：它既是一个 FX 节点（在图中有位置），又是一个"假张量"（可以像 Tensor 一样传递）。后续的操作（比如将 sin 的结果传给 add）通过引用 proxy 而不是引用具体数值，这样就自动建立了图的数据依赖关系。
+
+**Proxy 是连接符号执行和 FX Graph 的桥梁。** InstructionTranslator 看到的是 ``TensorVariable(proxy)``，而 ``proxy`` 内部持有对 FX Graph 中某个节点的引用。
+
+FakeTensor：符号执行中的"假"张量
+=========================================
+
+这里有一个关键问题：当 Dynamo 执行 ``torch.sin(x)`` 时，图捕获是成功了，但 ``torch.sin`` 的实际计算并没有发生。那如果后续代码依赖 ``x.sin()`` 的结果（比如检查它的形状、dtype 等），Dynamo 怎么处理？
+
+答案是 **FakeTensor**。Dynamo 在开始符号执行之前，会将所有输入张量替换为 ``FakeTensor``。FakeTensor 具有真实张量的所有元数据（形状、dtype、device），但不包含实际数据。
+
+.. code-block:: python
+   :caption: FakeTensor 的简化示意
+
+   class FakeTensor:
+       def __init__(self, shape, dtype, device):
+           self.shape = shape
+           self.dtype = dtype
+           self.device = device
+           # 没有 .data 或实际存储
+
+       def sin(self):
+           # 返回一个新的 FakeTensor，形状相同
+           return FakeTensor(self.shape, self.dtype, self.device)
+
+FakeTensor 让 Dynamo 可以在不实际计算的情况下"假装"执行代码。当代码检查 ``x.shape`` 时，FakeTensor 可以正确返回。当代码检查 ``x.sum() > 0`` 时，FakeTensor 无法提供真实数值——这时就需要 graph break 或者使用 symbolic shapes（第 8 章讨论）。
+
+Proxy 和 FakeTensor 的关系
+===============================
+
+在实际实现中，Proxy 和 FakeTensor 是结合使用的。当一个 Tensor 操作被追踪时：
+
+.. code-block:: text
+
+   真实张量
+       │
+       ├─ 元数据 → 用于创建 FakeTensor（形状、dtype）
+       │
+       └─ 用于创建 Proxy（在 FX Graph 中占位）
+           │
+           ▼
+   TensorVariable {
+       proxy: Proxy(%x)      # 在 FX Graph 中的位置
+       fake_tensor: FakeTensor(shape=(3,3), dtype=float32)  # 元数据
+   }
+
+当 Dynamo 后续需要访问这个张量的形状时（如 ``x.shape``），它使用 FakeTensor。当它需要引用这个张量在图中的位置时（如作为 ``torch.sin`` 的参数），它使用 Proxy。
+
+OutputGraph：图的最终构建
+==================================
+
+符号执行完成后，``InstructionTranslator.output`` 中包含了一个 ``OutputGraph`` 对象，它持有最终的 FX Graph：
+
+.. code-block:: python
+   :caption: pytorch/torch/_dynamo/output_graph.py 关键类
+
+   class OutputGraph:
+       def __init__(self, ...):
+           self.tracer = SubgraphTracer()  # 持有 FX Graph
+           self.guards = []                 # 累积的 guard 条件
+
+       def add_guard(self, guard):
+           """在编译过程中添加一个 guard"""
+           self.guards.append(guard)
+
+       @property
+       def graph(self):
+           """返回构建完成的 FX Graph"""
+           return self.tracer.graph
+
+``OutputGraph`` 在符号执行过程中积累了两样东西：
+
+1. **FX Graph**：通过 ``tracer.create_proxy`` 调用逐步构建
+2. **Guards**：每次对张量形状/属性做检查时，InstructionTranslator 会调用 ``output.add_guard`` 记录检查条件
+
+这两样东西最终被一起传给后端编译器。
+
+小结
+======
+
+这一节我们追踪了 ``torch.sin(x)`` 从字节码到 FX Graph 节点的完整路径：
+
+1. **VariableTracker** 统一包装层：所有 Python 值被包装为同态对象
+2. **SubgraphTracer** / **Proxy**：通过 ``fx.Tracer.create_proxy`` 在图中插入节点
+3. **FakeTensor**：提供元数据但不执行实际计算
+4. **OutputGraph**：持有最终的 FX Graph 和累积的 Guards
+
+这些机制协同工作，使得 Dynamo 可以在完全不修改用户代码的前提下，将任意 Python 函数的 Tensor 操作部分提取为一张可编译的计算图。
+
+下一节我们来看 guard 机制——它是如何保证缓存的编译结果对新的输入仍然有效的。
