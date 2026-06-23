@@ -11,7 +11,7 @@ Hello World
 
 新建一个文件 ``hello_compile.py``，输入以下代码：
 
-.. literalinclude:: ../examples/hello_compile.py
+.. literalinclude:: ../../examples/hello_compile.py
    :language: python
    :linenos:
 

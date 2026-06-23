@@ -11,7 +11,7 @@ FX Graph 基础
 
 打开 Python，运行下面这段代码：
 
-.. literalinclude:: ../examples/basic_fx_graph.py
+.. literalinclude:: ../../examples/basic_fx_graph.py
    :language: python
    :linenos:
 

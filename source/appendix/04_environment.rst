@@ -42,7 +42,7 @@
 示例代码
 ============
 
-本书配套示例代码位于 ``source/examples/`` 目录：
+本书配套示例代码位于项目根目录的 ``examples/`` 目录：
 
 .. code-block:: text
 
@@ -58,7 +58,7 @@
 
 .. code-block:: bash
 
-   python source/examples/hello_compile.py
+   python examples/hello_compile.py
 
 工具推荐
 ============

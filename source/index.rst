@@ -30,9 +30,3 @@
    :caption: 附录
 
    appendix/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: 示例代码
-
-   examples/index

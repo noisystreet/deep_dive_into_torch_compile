@@ -4,7 +4,7 @@
 Triton Kernel 示例
 ====================
 
-这一节通过三个实际可运行的 Triton kernel 示例，展示从简单到复杂的编程模式。所有示例代码位于 ``source/examples/triton_kernel.py``。
+这一节通过三个实际可运行的 Triton kernel 示例，展示从简单到复杂的编程模式。所有示例代码位于 ``examples/triton_kernel.py``。
 
 示例 1：逐元素加法
 ============================
@@ -12,7 +12,7 @@ Triton Kernel 示例
 最简单的 Triton kernel——将两个张量逐元素相加：
 
 .. code-block:: python
-   :caption: source/examples/triton_kernel.py
+   :caption: examples/triton_kernel.py
 
    @triton.jit
    def add_kernel(x_ptr, y_ptr, output_ptr, n_elements, BLOCK_SIZE: tl.constexpr):
