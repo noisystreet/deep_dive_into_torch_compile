@@ -8,9 +8,10 @@ Inductor 后端
    :maxdepth: 2
 
    01_inductor_overview
-   02_virtualization
-   03_ir_node
-   04_scheduler
-   05_fusion_and_layout
-   06_pattern_matcher
-   07_deferred_compilation
+   02_lowering_process
+   03_virtualization
+   04_ir_node
+   05_scheduler
+   06_fusion_and_layout
+   07_pattern_matcher
+   08_deferred_compilation

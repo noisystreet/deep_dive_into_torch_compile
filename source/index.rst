@@ -13,6 +13,7 @@
    :numbered:
    :caption: 目录
 
+   preface/index
    chapter_01_intro/index
    chapter_02_overview/index
    chapter_03_dynamo/index
@@ -23,12 +24,6 @@
    chapter_08_debug/index
    chapter_09_advanced/index
    chapter_10_cases/index
-
-.. toctree::
-   :maxdepth: 1
-   :caption: 前言
-
-   preface/index
 
 .. toctree::
    :maxdepth: 1
