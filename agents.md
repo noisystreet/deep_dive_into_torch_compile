@@ -88,7 +88,7 @@
 
 1. **第 1 章：torch.compile 简介** — torch.compile 概念、Hello World、基本用法、性能初探
 2. **第 2 章：整体架构** — 编译流水线、数据流、FX Graph 基础、编译缓存
-3. **第 3 章：TorchDynamo** — 字节码基础 → 字节码分析 → 图捕获 → guard → graph break → 缓存 → 符号形状
+3. **第 3 章：TorchDynamo** — 字节码基础 → 字节码分析 → InstructionTranslator → 图捕获 → guard → graph break → 缓存 → 符号形状
 4. **第 4 章：AOTAutograd** — 联合求导 → 图分区 → min-cut 重计算 → 算子分解
 5. **第 5 章：Inductor 后端** — FX Passes → Lowering 流程 → 虚拟化 → IRNode → Scheduler → Pattern Matcher → 延迟编译
 6. **第 6 章：代码生成** — 代码生成概览 → IR 到代码变换 → CPU/GPU 代码生成 → Kernel Launch
