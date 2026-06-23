@@ -9,9 +9,9 @@
    **Dynamo 的提交流中，超过 12% 是 Revert。**
    在 Dynamo 的 6,439 次历史提交中，revert 占了 815 次（约 12.7%）。这反映了团队的一个开发哲学：**先 merge，错了再 revert**，而不是花很长时间逐行 review。在高速迭代的编译器项目中，这比"完美 review 再 merge"更高效——因为有些编译器的 bug 只在特定模型、特定 GPU 上才会出现，review 阶段很难发现。PyTorch 的 CI 虽然严格，但不会覆盖所有模型。所以团队选择用"revert 安全网"代替"review 放大镜"。
 
-第 3.1 节从设计目标出发，说明了 FakeTensor、Guard、Graph Break 如何组成一条链。这一节进入链条的核心环节——**符号执行如何具体把 Python 调用变成 FX 节点**。
+第 3.1 节从设计目标出发，说明了 FakeTensor、Guard、Graph Break 如何组成一条链。第 3.3 节讲了 **InstructionTranslator 如何驱动字节码、如何通过 ``call_function`` 派发**。本节站在 **值语义** 一侧：VariableTracker、Proxy、FakeTensor 如何把一次派发变成 FX Graph 里的节点。
 
-这一节是第 3 章的核心。我们来看 Dynamo 符号执行引擎最关键的运作机制——它是怎么把 ``torch.sin(x)`` 这样一个 Python 调用变成 FX Graph 中的一个 ``call_function`` 节点的？
+这一节是第 3 章的核心之一。我们追踪 ``torch.sin(x)`` 在 ``call_function`` 进入 ``BuiltinVariable`` 之后，如何创建 Proxy、插入 ``call_function`` 节点。
 
 VariableTracker：一切皆变量
 ===============================
@@ -48,71 +48,18 @@ VariableTracker：一切皆变量
 追踪一条 ``torch.sin(x)``
 ==============================
 
-我们从字节码层面追踪 Dynamo 处理 ``torch.sin(x)`` 的完整路径。
-
-**第一步：加载 torch 模块**
+第 3.3 节已说明 ``CALL_FUNCTION`` handler 会调用 ``self.call_function(fn, args, {})``。下面从 **VariableTracker 派发** 侧，补全 ``torch.sin(x)`` 如何变成 FX 节点（字节码逐步弹栈过程见第 3.3 节分发表）。
 
 .. code-block:: text
 
-   字节码：LOAD_GLOBAL  torch
-           ↓
-   InstructionTranslator.LOAD_GLOBAL(inst)
-           ↓
-   查找 frame.f_globals["torch"]，包装为 TorchVariable
-           ↓
-   压栈：stack = [TorchVariable(torch)]
+   CALL_FUNCTION
+       → call_function(BuiltinVariable(torch.sin), [TensorVariable(x)], {})
+           → BuiltinVariable.call_function
+               → SubgraphTracer.create_proxy("call_function", torch.sin, ...)
+                   → FX Graph 插入 %sin 节点
+                       → 返回 TensorVariable(sin_proxy)
 
-**第二步：加载 sin 属性**
-
-.. code-block:: text
-
-   字节码：LOAD_ATTR  sin
-           ↓
-   InstructionTranslator.LOAD_ATTR(inst)
-           ↓
-   在 TorchVariable 上调用 var_getattr("sin")
-           ↓
-   返回 BuiltinVariable(torch.sin)
-           ↓
-   压栈：stack = [TorchVariable, BuiltinVariable(torch.sin)]
-
-**第三步：加载参数 x**
-
-.. code-block:: text
-
-   字节码：LOAD_FAST  x
-           ↓
-   InstructionTranslator.LOAD_FAST(inst)
-           ↓
-   从 symbolic_locals 中取出 x 对应的 TensorVariable
-           ↓
-   压栈：stack = [TorchVariable, BuiltinVariable(torch.sin), TensorVariable(x)]
-
-**第四步：调用函数**
-
-.. code-block:: text
-
-   字节码：CALL_FUNCTION  1
-           ↓
-   InstructionTranslator.CALL_FUNCTION(inst)
-       args = popn(1)   → [TensorVariable(x)]
-       fn   = pop()      → BuiltinVariable(torch.sin)
-           ↓
-   self.call_function(fn, args, {})
-           ↓
-   fn.call_function(self, args, kwargs)
-       # 派发到 BuiltinVariable.call_function
-           ↓
-   BuiltinVariable 检查 fn.value（即 torch.sin）的操作类型
-       → 发现这是一个 torch 下的函数调用
-       → 使用 SubgraphTracer.create_proxy 创建 FX 节点
-           ↓
-   在 FX Graph 中插入：
-       %sin = call_function[target=torch.sin](args = (%x,))
-           ↓
-   将结果包装为 TensorVariable(sin_proxy) 压回栈
-
-执行完所有字节码后，FX Graph 中就有了三个节点：
+执行完 ``return torch.sin(x) + torch.cos(x)`` 对应的所有字节码后，FX Graph 类似：
 
 .. code-block:: text
 
@@ -193,7 +140,7 @@ FakeTensor：符号执行中的"假"张量
            # 返回一个新的 FakeTensor，形状相同
            return FakeTensor(self.shape, self.dtype, self.device)
 
-FakeTensor 让 Dynamo 可以在不实际计算的情况下"假装"执行代码。当代码检查 ``x.shape`` 时，FakeTensor 可以正确返回。当代码检查 ``x.sum() > 0`` 时，FakeTensor 无法提供真实数值——这时就需要 graph break 或者使用 symbolic shapes（见第 3.7 节）。
+FakeTensor 让 Dynamo 可以在不实际计算的情况下"假装"执行代码。当代码检查 ``x.shape`` 时，FakeTensor 可以正确返回。当代码检查 ``x.sum() > 0`` 时，FakeTensor 无法提供真实数值——这时就需要 graph break 或者使用 symbolic shapes（见第 3.8 节）。
 
 Proxy 和 FakeTensor 的关系
 ===============================

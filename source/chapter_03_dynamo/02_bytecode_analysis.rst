@@ -85,59 +85,12 @@ Dynamo 的字节码分析器位于 ``pytorch/torch/_dynamo/bytecode_analysis.py`
    │   输出：FX Graph + Guards            │
    └─────────────────────────────────────┘
 
-指令调度的核心机制
-========================
+InstructionTranslator 如何逐条模拟执行、如何通过 ``call_function`` 派发、控制流与 graph break 如何嵌入 ``step()`` 循环——这些是第 3.3 节的主题。这里只保留 **静态分析 → 动态模拟** 的分工边界。
 
-在实际的符号执行阶段，``InstructionTranslator`` 使用一个**分发表**（dispatch table）来映射字节码指令到处理方法。这个分发表通过 ``BytecodeDispatchTableMeta`` 元类自动构建。
+从帧到 IT 的入口
+===================
 
-.. code-block:: python
-   :caption: pytorch/torch/_dynamo/symbolic_convert.py（简化示意）
-
-   class BytecodeDispatchTableMeta(type):
-       """自动为每条字节码指令注册处理方法"""
-
-       def __new__(cls, name, bases, dct):
-           dispatch_table = {}
-           for key, value in dct.items():
-               if hasattr(dis, key):
-                   # 如果类方法名匹配字节码指令名，自动注册
-                   dispatch_table[getattr(dis, key)] = value
-           dct["dispatch_table"] = [dispatch_table]
-           return super().__new__(cls, name, bases, dct)
-
-
-   class InstructionTranslatorBase(metaclass=BytecodeDispatchTableMeta):
-       def step(self):
-           """执行一条指令"""
-           inst = self.instructions[self.instruction_pointer]
-           handler = self.dispatch_table[inst.opcode]
-           handler(self, inst)
-           self.instruction_pointer += 1
-
-这意味着 ``InstructionTranslatorBase`` 的子类中，方法名和字节码指令名一致的会自动成为该指令的 handler。例如 ``CALL_FUNCTION`` 方法自动处理 ``dis.opmap["CALL_FUNCTION"]`` 指令。
-
-.. code-block:: python
-
-   # InstructionTranslatorBase 中的处理方法
-   def CALL_FUNCTION(self, inst):
-       args = self.popn(inst.argval)  # 从模拟栈弹出 N 个参数
-       fn = self.pop()                # 弹出函数对象
-       self.call_function(fn, args, {})  # 派发到 VariableTracker
-
-   def LOAD_FAST(self, inst):
-       name = inst.argval
-       self.push(self.symbolic_locals[name])  # 从模拟局部变量压入栈
-
-   def STORE_FAST(self, inst):
-       name = inst.argval
-       self.symbolic_locals[name] = self.pop()  # 从栈弹出存入局部变量
-
-这种基于分发表的架构让 Dynamo 对新 Python 版本的适配变得相对容易。每个新的 Python 版本可能引入新的字节码指令（CPython 3.11 引入了 ``CALL_METHOD`` 等），只需在 ``InstructionTranslatorBase`` 中添加对应的方法即可。
-
-实际执行流程
-=================
-
-当一个 Python 帧被 Dynamo 拦截后，从字节码分析到构建出 FX Graph 的整体流程如下：
+当一个 Python 帧被 Dynamo 拦截后，``convert_frame.py`` 中的 ``convert_frame_assert`` 大致做：
 
 .. code-block:: text
 
@@ -145,27 +98,14 @@ Dynamo 的字节码分析器位于 ``pytorch/torch/_dynamo/bytecode_analysis.py`
        │
        ├─ 1. 提取字节码 (frame.f_code.co_code)
        │
-       ├─ 2. 字节码分析
+       ├─ 2. 字节码分析（本节）
        │      bytecode_analysis.py:
        │      • remove_dead_code
        │      • remove_pointless_jumps
        │
-       ├─ 3. 创建 InstructionTranslator
-       │      传入清理后的指令列表
+       ├─ 3. 创建 InstructionTranslator，传入清理后的指令
+       │      （详见第 3.3 节）
        │
-       ├─ 4. 符号执行循环
-       │      while translator.instruction_pointer < len(instructions):
-       │          translator.step()
-       │          # step 内部：
-       │          #   1. 读取当前指令
-       │          #   2. 查分发表找到 handler
-       │          #   3. 执行 handler（可能插入 FX node）
-       │          #   4. instruction_pointer += 1
-       │
-       ├─ 5. 构建 OutputGraph
-       │      从 translator.output 提取 FX Graph
-       │
-       └─ 6. 生成 Guards
-              从 translator.output 提取 Guard 条件
+       └─ 4. translator.run() → OutputGraph + Guards
 
-这就是 Dynamo 图捕获的骨架。下一节我们会进入细节：符号执行引擎具体是如何将 ``torch.sin(x)`` 这样的调用变成 FX Graph 中的一个节点的。
+静态分析的质量直接影响 IT 的稳定性：死代码、非法跳转若不在此阶段剔除，符号执行阶段会以更难懂的 ``Unsupported`` 失败。下一节我们打开 InstructionTranslator，看符号执行引擎的内部设计与执行细节。

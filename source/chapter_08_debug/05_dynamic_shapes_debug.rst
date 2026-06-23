@@ -4,7 +4,7 @@
 Dynamic Shapes 调试
 =========================
 
-第 3.7 节介绍了符号形状（symbolic shapes）的原理——``ShapeEnv``、``SymNode`` 以及 ``dynamic=True`` 的工作方式。这一节聚焦 **如何诊断和优化** Dynamic Shapes 场景中的 guard 失败与频繁重编译问题。
+第 3.8 节介绍了符号形状（symbolic shapes）的原理——``ShapeEnv``、``SymNode`` 以及 ``dynamic=True`` 的工作方式。这一节聚焦 **如何诊断和优化** Dynamic Shapes 场景中的 guard 失败与频繁重编译问题。
 
 判断是否触发了重新编译
 ===============================

@@ -67,7 +67,7 @@ torch.compile vs torch.export
        dynamic_shapes=dynamic_shapes,
    )
 
-这里的 ``Dim`` 与第 3.7 节讨论的符号形状（symbolic shapes）共享同一套 ``ShapeEnv`` 基础设施——``export`` 在编译期就固定了哪些维度是符号化的，而不是像 ``torch.compile`` 那样在运行时通过 guard 失败来发现新形状。
+这里的 ``Dim`` 与第 3.8 节讨论的符号形状（symbolic shapes）共享同一套 ``ShapeEnv`` 基础设施——``export`` 在编译期就固定了哪些维度是符号化的，而不是像 ``torch.compile`` 那样在运行时通过 guard 失败来发现新形状。
 
 AOTInductor：Inductor 的离线变体
 =====================================

@@ -32,7 +32,7 @@
      - decomposition 配置在 Inductor、执行在 AOTAutograd（第 4.6 节）
    * - **正确性优先于性能**
      - guard 失败则重编译；缓存超限则 fallback eager，宁可慢也不能错
-     - guard（第 3.4 节）、缓存 fallback（第 3.6 节）、三层缓存（第 2.4 节）
+     - guard（第 3.5 节）、缓存 fallback（第 3.7 节）、三层缓存（第 2.4 节）
    * - **Define-by-Run**
      - IR 随 lower 过程逐级构建，保留 PyTorch「边执行边定义」的语义
      - Inductor IRNode（第 5.1 节）
@@ -51,7 +51,7 @@
 
 第一次调用 ``train_step(x, y)`` 时发生了什么？
 
-1. **编译器适应 Python**：Dynamo 不会因为有 ``print`` 就拒绝编译，而是在 ``print`` 处 graph break，前后各形成一个子图（第 3.5 节）。
+1. **编译器适应 Python**：Dynamo 不会因为有 ``print`` 就拒绝编译，而是在 ``print`` 处 graph break，前后各形成一个子图（第 3.6 节）。
 2. **阶段专精**：Dynamo 只负责捕获前向 FX Graph；AOTAutograd 在编译期追联合反向图；Inductor 只负责生成 kernel——各干各的。
 3. **策略与机制分离**：Inductor 的 ``select_decomp_table()`` 决定 ``(x*y).sum()`` 要不要分解为基本算子，AOTAutograd 只执行分解，不关心 Triton 怎么写。
 4. **正确性优先**：若下次 ``x.shape`` 变了，guard 失败触发重编译；若重编译次数过多，fallback 到 eager 而不是 silent wrong result。
