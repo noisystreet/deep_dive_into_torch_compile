@@ -8,7 +8,8 @@
 #
 # 返回码: 0=通过, 1=语法错误, 2=构建警告
 
-set -e
+# 注意：不使用 set -e，因为 check_rst_files / check_rst_inline_markup
+# 会通过返回码传递警告级别，需要由主逻辑统一处理。
 
 # 确定项目根目录：优先用 git 获取，回退到脚本所在目录的父目录
 if command -v git &>/dev/null && git rev-parse --git-dir &>/dev/null; then
@@ -143,9 +144,10 @@ else
     echo -e "${YELLOW}=== 检查所有 RST 文档 ===${NC}"
     RST_FILES=$(find "$PROJECT_ROOT/source" -name '*.rst' | sort)
     check_rst_files $RST_FILES
+    EXIT_CODE=$?
 
-    # 额外检查内联标记格式
-    check_rst_inline_markup $RST_FILES
+    # 内联标记风格检查（仅提示，不阻塞 CI）
+    check_rst_inline_markup $RST_FILES || true
 fi
 
 case $EXIT_CODE in

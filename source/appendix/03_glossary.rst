@@ -54,7 +54,7 @@
 
    Symbolic Shapes
       符号形状机制。用 ``SymNode`` / ``SymInt`` 代替具体维度数值，使一份编译
-      结果适配多种输入尺寸。由 ``ShapeEnv``（``symbolic_shapes.py``）管理。
+      结果适配多种输入尺寸。由 ``ShapeEnv`` （``symbolic_shapes.py``）管理。
 
    ShapeEnv
       PyTorch 中管理符号形状的核心组件，负责创建符号变量、记录约束、

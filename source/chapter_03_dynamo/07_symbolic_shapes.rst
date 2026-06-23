@@ -1,8 +1,8 @@
 .. _symbolic-shapes:
 
-==================
+================================
 符号形状（Symbolic Shapes）
-==================
+================================
 
 第 3.4 节的 guard 机制默认把 ``x.shape[0] == 32`` 这样的**具体数值**编进 guard 里。输入形状一变，guard 失败，触发重新编译。对于 batch size 固定、序列长度恒定的训练任务，这完全合理；但对于变长 batch、LLM 推理中的不同 prompt 长度，频繁重编译会让编译时间压过执行收益。
 
@@ -30,14 +30,14 @@
 ShapeEnv 与 SymNode
 ======================
 
-符号形状的管理集中在 ``torch/fx/experimental/symbolic_shapes.py`` 中的 **``ShapeEnv``** 类。每次 Dynamo 开始编译一个 frame，都会创建或复用一个 ``ShapeEnv`` 实例，负责：
+符号形状的管理集中在 ``torch/fx/experimental/symbolic_shapes.py`` 中的 ``ShapeEnv`` 类。每次 Dynamo 开始编译一个 frame，都会创建或复用一个 ``ShapeEnv`` 实例，负责：
 
 - 创建符号变量（``SymNode``）
 - 记录符号之间的约束（如 ``s0 == s1``、``s0 >= 1``）
 - 在 guard 失败时给出约束冲突的原因
 - 与 FakeTensor 协作，让符号执行阶段就能"看到"符号化的 shape
 
-**``SymNode``** 是单个符号的载体。它包装了一个 SymPy 表达式，并携带 dtype、值域等元数据：
+``SymNode`` 是单个符号的载体。它包装了一个 SymPy 表达式，并携带 dtype、值域等元数据：
 
 .. code-block:: python
    :caption: SymNode 的简化示意
@@ -85,7 +85,7 @@ ShapeEnv 与 SymNode
 如何启用符号形状
 ====================
 
-**全局开启**（最简单）：
+**全局开启** （最简单）：
 
 .. code-block:: python
 
@@ -93,7 +93,7 @@ ShapeEnv 与 SymNode
    def fn(x):
        return x * 2
 
-**按维度标记**（更精细）：
+**按维度标记** （更精细）：
 
 .. code-block:: python
 
@@ -109,7 +109,7 @@ ShapeEnv 与 SymNode
 
    fn(x)
 
-**Export 路径声明**（编译期固定约束）：
+**Export 路径声明** （编译期固定约束）：
 
 .. code-block:: python
 
@@ -131,10 +131,10 @@ Guard 树（第 3.4 节）在符号形状模式下会生成不同类型的检查
      - 符号模式示例
    * - Shape guard
      - ``x.shape[0] == 32``
-     - ``x.shape[0] >= 1``（值域约束）
+     - ``x.shape[0] >= 1`` （值域约束）
    * - 符号关系
      - 无
-     - ``x.shape[0] == y.shape[0]``（两输入 batch 对齐）
+     - ``x.shape[0] == y.shape[0]`` （两输入 batch 对齐）
    * - 数据依赖
      - 可能 graph break
      - 可能 graph break 或符号化失败
@@ -156,7 +156,7 @@ Guard 树（第 3.4 节）在符号形状模式下会生成不同类型的检查
        kernel 质量: 中（runtime 读 shape，优化保守）
        适用: 变长输入推理、多 batch size 服务
 
-PyTorch 还在探索 **延迟特化**（第 5.9 节）：先用泛化 kernel 运行，后台为常见形状编译特化版本，后续自动切换。这是静态与动态之间的折中。
+PyTorch 还在探索 **延迟特化** （第 5.9 节）：先用泛化 kernel 运行，后台为常见形状编译特化版本，后续自动切换。这是静态与动态之间的折中。
 
 与 graph break 的交互
 ==========================
@@ -179,7 +179,7 @@ PyTorch 还在探索 **延迟特化**（第 5.9 节）：先用泛化 kernel 运
 ======
 
 - **符号形状** 用 ``SymNode`` / ``SymInt`` 代替具体维度数值，让一份编译结果适配多种输入尺寸
-- **``ShapeEnv``** （``symbolic_shapes.py``）是符号变量的创建、约束求解与 guard 生成的核心
+- ``ShapeEnv`` （``symbolic_shapes.py``）是符号变量的创建、约束求解与 guard 生成的核心
 - **启用方式**：``dynamic=True``、``mark_dynamic``、``torch.export.Dim`` 三种路径，底层共享同一基础设施
 - **权衡**：减少重编译 vs kernel 特化程度；静态训练优先关闭 dynamic，变长推理优先开启
 - **调试**：``TORCH_LOGS=+dynamic`` 追踪符号决策；详见第 8.5 节

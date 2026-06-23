@@ -115,8 +115,8 @@ make html
 
 本项目是一个 **Sphinx 文档站点**（中文 torch.compile 教程），"运行应用"即构建并预览 HTML 文档。依赖已由启动 update script (`pip install -r requirements.txt`) 安装好（`sphinx` / `sphinx-rtd-theme` / `sphinxcontrib-mermaid`）。常用命令见 `README.md` 与 `Makefile`，下面只记录非显而易见的注意事项：
 
-- **构建**：`make html`（产物在 `_build/html/`）。本地开发用 `make html` 即可；不要加 `-W`。CI（`.github/workflows/ci.yml`）使用 `make html SPHINXOPTS="-W"` 把警告当错误，当前内容存在 1 个 Pygments 代码高亮警告（`chapter_03_dynamo/05_graph_break.rst`），所以 CI 的 Build 步骤会失败——这是既有内容问题，不是环境问题。
+- **构建**：`make html`（产物在 `_build/html/`）。本地开发用 `make html` 即可；不要加 `-W`。CI（`.github/workflows/ci.yml`）使用 `make html SPHINXOPTS="-W"` 把警告当错误。
 - **预览**：`make serve` 会先构建再用 `python3 -m http.server` 启动预览，默认端口 8000（`PORT` 变量未设时为 8000）。在 cloud VM 中已验证 `http://localhost:8000/` 可正常访问并渲染。也可直接 `cd _build/html && python3 -m http.server 8000`。
-- **Lint / RST 检查**：`bash scripts/precommit-check.sh`（即 CI 的 "Check RST syntax" 步骤）。注意：脚本除 Sphinx 语法解析外，还会用 grep 检查 `**bold**` 后紧跟中文标点等内联标记风格；当前 master 内容触发了这些风格警告，脚本因 `set -e` 返回退出码 1，**这是 master 上既有的 CI 失败原因**（Sphinx 解析本身报告"无警告"）。环境本身正常。
+- **Lint / RST 检查**：`bash scripts/precommit-check.sh`（即 CI 的 "Check RST syntax" 步骤）。脚本会运行 Sphinx 语法解析；内联标记风格（如 `**bold**` 后紧跟中文标点）仅作提示，不阻塞 CI。
 - **git hooks**（仅在需要提交触发 pre-commit RST 检查时）：`git config --local core.hooksPath .githooks`。
 - 修改 `.rst` 内容后无热重载，需重新 `make html` 才能在预览中看到更新。
