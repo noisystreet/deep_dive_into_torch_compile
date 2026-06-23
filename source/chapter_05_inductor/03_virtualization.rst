@@ -4,6 +4,11 @@
 虚拟化（Virtualization）
 ==============================
 
+.. note::
+
+   **Virtualization 是 Inductor 中最容易被忽略的优化。**
+   它没有复杂的算法，也没有大幅的性能提升——它的作用更像"扫清障碍"：没有 virtualization，Scheduler 就无法正确识别两个操作是否可以融合，因为视图操作会引入虚假的数据依赖。有趣的是，Inductor 团队在早期版本中曾尝试跳过 virtualization，让 lowering 直接处理所有视图操作，结果发现 Scheduler 的融合率从 80% 降到了 40% 以下。这印证了一个编译器设计的常识：**一个好的 IR 比一个好的优化更重要**。
+
 虚拟化（Virtualization）是 Inductor 降级过程中的第一步。它解决的是 FX Graph 中张量别名和视图操作（view/reshape/transpose/slice）导致的"存储歧义"问题。
 
 别名为什么是问题

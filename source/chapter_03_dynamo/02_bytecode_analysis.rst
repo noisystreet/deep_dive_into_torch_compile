@@ -4,6 +4,11 @@
 字节码分析
 ==================
 
+.. note::
+
+   **CPython 字节码有 200+ 条指令，Dynamo 只需要处理其中约 30 条。**
+   大多数指令只与 Python 运行时相关（如 ``STORE_GLOBAL``、``DELETE_ATTR``）而不涉及 Tensor 操作。Dynamo 的策略是**忽略无关指令，只处理涉及 Tensor 的调用**。这类似于"鹰眼"——不分析代码中的每一行，只关注与计算相关的部分。在实际的模型中，Dynamo 通常能成功捕获 95% 以上的操作，剩下的 5% 通过 graph break 优雅回退。
+
 上一节我们了解了 CPython 字节码的基本结构——指令、栈、值传递。这一节我们来看 Dynamo 具体是怎么分析这些字节码，从中识别出 Tensor 操作并构建 FX Graph 的。
 
 Dynamo 的字节码分析器位于 ``pytorch/torch/_dynamo/bytecode_analysis.py``，它与符号执行引擎 ``InstructionTranslator``（在 ``symbolic_convert.py`` 中）配合工作。字节码分析器负责静态分析（不执行代码），而 InstructionTranslator 负责动态模拟（"假装执行"的同时记录图）。

@@ -4,6 +4,11 @@
 GPU 代码生成
 ===============
 
+.. note::
+
+   **Inductor 生成的 Triton 代码看起来像手写的吗？**
+   如果你曾经看过 Inductor 生成的 Triton kernel 源码，你会发现它的风格和手写 Triton kernel 非常相似——同样的 ``tl.load``、``tl.store``、掩码检查。这是因为 Inductor 的 ``TritonKernel`` 是逐行生成代码的，相当于一个"编译器即代码模板"的过程。但 Inductor 永远不会生成 ``tl.dot`` 调用——它会将矩阵乘法交给 ``TemplateBuffer`` 处理，使用高度优化的 Triton GEMM 模板，而不是让 codegen 去拼凑矩阵乘法。这是 Inductor 的一个关键设计：**逐元素和归约操作由编译器生成，而矩阵乘法则交给预定义模板**。
+
 TritonScheduling 和 TritonKernel 负责将 IRNode 翻译为 Triton 代码——这是 Inductor 在 GPU 上的默认代码生成后端。
 
 TritonScheduling 架构

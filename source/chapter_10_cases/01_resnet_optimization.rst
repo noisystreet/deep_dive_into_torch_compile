@@ -4,6 +4,11 @@
 案例 1：ResNet 优化
 ==============================
 
+.. note::
+
+   **ResNet 是 torch.compile 最佳 benchmark 之一。**
+   在 PyTorch 团队的内测中，ResNet50 在 ``max-autotune`` 模式下可以达到 2.8x 的推理加速比——这意味着一个本来需要 10ms 的前向传播，编译后只需要 3.5ms。这主要得益于三个因素：ResNet 全是 Conv + BN + ReLU 的组合（**Scheduler 最擅长的融合模式**）、没有控制流（**无 graph break**）、固定的输入尺寸（**形状稳定**）。如果你的模型也具备这三个特点，大概率也能获得 2x+ 的加速。
+
 ResNet 是经典的 CNN 架构，也是 torch.compile 优化效果的典型 benchmark。这一节通过具体的优化步骤展示 torch.compile 对 CNN 模型的影响。
 
 基线设置

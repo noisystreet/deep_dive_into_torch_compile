@@ -4,6 +4,11 @@
 代码生成概览
 ==================
 
+.. note::
+
+   **Inductor 的代码生成器用 Python 来生成 Python 代码。**
+   这听起来有点"套娃"——Inductor 本身是用 Python 写的，它生成的 Triton kernel 也是 Python（只是带 ``@triton.jit`` 装饰器）。这意味着 Inductor 可以用 Python 的字符串模板、AST 操作、甚至 ``eval()`` 来动态构造代码。这种"自举"方式让 Inductor 的开发效率远高于传统编译器（如 LLVM 需要处理各种后端描述文件）。当然，代价是代码生成的性能开销——但这只在编译时发生，不影响运行时的性能。
+
 代码生成（Codegen）是 Inductor 编译流水线的最后一步。当 Scheduler 完成 IRNode 的融合和调度后，它将每个 ``FusedSchedulerNode`` 分发给对应设备的代码生成器，后者将 IRNode 翻译为可编译的源代码。
 
 这一节从整体上了解代码生成器的架构和它在整个流程中的位置。

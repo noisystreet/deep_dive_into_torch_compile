@@ -4,6 +4,11 @@
 什么是 torch.compile
 ==========================
 
+.. note::
+
+   **torch.compile 的代号是 "TorchDynamo" 还是 "PyTorch 2.0"？**
+   严格来说，``torch.compile`` 是 PyTorch 2.0 引入的**编译 API**，而 TorchDynamo 是它底层的图捕获引擎。项目在开发阶段的内部代号是 "Dynamo"，团队最初只打算做一个更好的 TorchScript 替代品，但后来发现字节码方案比预期强大得多，最终整个编译栈变成了 PyTorch 2.0 最核心的新特性。PyTorch 2.0 发布会时，核心维护者 Soumith Chintala 说这是 "PyTorch 历史上最大的一次发布"。
+
 从一个实际问题说起
 ====================
 

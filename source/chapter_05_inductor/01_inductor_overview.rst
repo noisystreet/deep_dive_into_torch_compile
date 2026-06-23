@@ -4,6 +4,11 @@
 Inductor 概览
 ==================
 
+.. tip::
+
+   **Inductor 的名字来自"磁感线圈"（inductor）。**
+   PyTorch 团队在命名时遵循了一个传统：用物理学名词命名编译器组件。Dynamo（发电机）、Inductor（电感）、Transformer（变压器）——PyTorch 的编译栈成了一组"电气工程"主题的命名集合。团队曾开玩笑说，如果以后要再做一个模块，应该叫 "Capacitor"（电容）。相比无聊的 "backend_v2"，这样的命名显然更有记忆点。
+
 Inductor 是 torch.compile 的默认编译器后端。它接收 AOTAutograd 分区后的 FX Graph，经过降级、融合、代码生成三个阶段，最终输出高效的 GPU（Triton）或 CPU（C++/OpenMP）代码。
 
 这一节我们从整体上了解 Inductor 的架构和工作流程。

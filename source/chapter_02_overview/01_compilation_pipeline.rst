@@ -4,6 +4,11 @@
 编译流水线
 ======================
 
+.. seealso::
+
+   **为什么选择三阶段架构？**
+   在 torch.compile 之前，PyTorch 的编译器尝试（TorchScript）试图在一个阶段内完成"图捕获 + 自动微分 + 代码生成"。这种做法耦合度高，任何一个环节出错整个编译就失败了。三阶段架构的设计灵感来自 LLVM——**每个阶段只做一件事，且通过标准化的中间表示（FX Graph）通信**。Dynamo 输出 FX Graph，AOTAutograd 消费并变换它，Inductor 消费变换后的图。这种松耦合的设计使得每个组件可以独立测试、独立演进。例如，社区已经开发了 ``torch-xla`` 后端，它直接消费 FX Graph 并生成为 XLA 代码，完全跳过了 Inductor。
+
 第 1 章我们从"编译 vs 解释"的角度了解了 torch.compile 的基本概念。这一节我们打开引擎盖，看看一次完整的编译过程到底是怎么走完的。我们会追踪一次 ``torch.compile(fn)(x)`` 调用，从 Python 函数入口一直跟踪到生成的 Triton kernel。
 
 源码结构总览

@@ -4,6 +4,11 @@
 前向与反向联合求导
 =========================
 
+.. tip::
+
+   **AOTAutograd 的名字为什么叫 "AOT"？**
+   "AOT" 代表 Ahead-of-Time（提前）。这里的"提前"是相对于 eager 模式而言的——在 eager 模式下，autograd 的 tape 是在前向传播过程中实时构建的；而 AOTAutograd 在模型执行**之前**（编译阶段）就完成了联合图的创建和分析。这有点像"先画好地图再出发"而不是"边走边记路"。这种提前分析使 AOTAutograd 能够看到前向和反向的全局联系，从而做出更好的优化决策。
+
 AOTAutograd 的全称是 **Ahead-of-Time Autograd** ——"提前"的自动微分。它在模型实际运行之前，通过追踪 autograd 的计算过程，生成一张包含**前向（forward）和反向（backward）的联合计算图**。
 
 AOTAutograd 的源码位于 ``pytorch/torch/_functorch/`` 目录，核心代码在 ``aot_autograd.py`` 和 ``_aot_autograd/`` 子目录中：

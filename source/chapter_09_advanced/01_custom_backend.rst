@@ -4,6 +4,11 @@
 自定义后端
 ==================
 
+.. note::
+
+   **Inductor 不是唯一的选择——社区已经有了 20+ 个后端。**
+   PyTorch 的 ``backend`` 参数目前支持超过 20 个后端，包括 ``ipex``（Intel）、``xla``（Google TPU）、``tensorrt``（NVIDIA），以及社区贡献的 ``torch-mlir``（LLVM 生态）等。其中最具戏剧性的是 ``torch-mlir``——它由几位 LLVM 编译器工程师在业余时间开发，却在某些场景下达到了与 Inductor 相当的性能。这说明"FX Graph 作为中间表示"的设计是成功的：只要你能消费 FX Graph，就能成为 torch.compile 的后端。
+
 torch.compile 支持自定义后端（custom backend），允许用户将编译后的计算图发送到自定义的编译器或运行时。这为实验性的编译器研究、专用硬件加速等场景提供了接口。
 
 什么是后端

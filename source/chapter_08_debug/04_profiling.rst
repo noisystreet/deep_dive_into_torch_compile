@@ -4,6 +4,11 @@
 性能分析
 ============
 
+.. tip::
+
+   **Chrome Trace 是分析 GPU 空闲时间最好的工具。**
+   在 ``chrome://tracing`` 中加载 ``trace.json`` 后，你可以看到 GPU kernel 的"间隙"——两个 kernel 之间 GPU 没有在做任何工作的空闲时间。这些间隙通常意味着 CPU 在准备下一个 kernel launch 的输入或进行同步操作。对于编译后的模型，理想的 trace 应该是"紧密排列"的——kernel 一个接一个，中间没有可见的间隙。如果你看到大量间隙，说明 kernel launch 开销占了主导，应该尝试 ``reduce-overhead`` 模式或 CUDA Graph。
+
 性能分析（Profiling）是理解编译后模型性能瓶颈的关键手段。这一节介绍如何分析 ``torch.compile`` 生成的 kernel 的性能。
 
 torch.profiler
