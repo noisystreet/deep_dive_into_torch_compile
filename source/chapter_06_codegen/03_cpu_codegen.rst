@@ -4,6 +4,11 @@
 CPU 代码生成
 ==============
 
+.. note::
+
+   **CPU 后端的优化主要由 Intel 团队贡献。**
+   在 PyTorch 的公开 commit 历史中，CPU 后端相关提交（mps/xpu/rocm/cpu）共约 676 次，其中来自 Intel 工程师的贡献占了绝大多数。CPU 后端的演进路线是：**2022.10** 实现基础向量化（AVX2/AVX512）→ **2023.03** Conv/GEMM fusion 和 CppWrapper → **2023.08** BF16 支持 → **2024** GEMM 模板和 max-autotune。截止 2024 年底，Inductor CPU 后端的向量化覆盖率已从最初的 ~70% 提升到 94%。CPU 后端比 GPU 后端更难优化——GPU 后端有 Triton 这个第三方编译器，而 CPU 后端需要自己处理向量化、缓存行对齐、OpenMP 调度等底层细节。
+
 CPPScheduling 和 CPPKernel 负责将 IRNode 翻译为 C++/OpenMP 代码。这是 Inductor 在 CPU 上的默认代码生成后端。
 
 CPPScheduling 架构

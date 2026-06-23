@@ -9,6 +9,11 @@ Inductor 概览
    **Inductor 的名字来自"磁感线圈"（inductor）。**
    PyTorch 团队在命名时遵循了一个传统：用物理学名词命名编译器组件。Dynamo（发电机）、Inductor（电感）、Transformer（变压器）——PyTorch 的编译栈成了一组"电气工程"主题的命名集合。团队曾开玩笑说，如果以后要再做一个模块，应该叫 "Capacitor"（电容）。相比无聊的 "backend_v2"，这样的命名显然更有记忆点。
 
+.. note::
+
+   **Inductor 是三个组件中投入最大的——提交数量是 AOTAutograd 的 6.7 倍。**
+   从入仓至今，Inductor 的提交次数约 8,787 次，占编译栈总提交（16,543 次）的 53%。其中约 1,709 次（~19.5%）是 bug fix，1012 次（~11.5%）是 revert。Inductor 的修改量最大并非意外——代码生成是最复杂、最容易出问题的环节。每次 PyTorch 新增一个 ATen 算子，Inductor 就需要为其添加 lowering 函数；每次 Triton 编译器有变动，Inductor 的 codegen 可能也需要跟着适配。相比之下，Dynamo（字节码分析）和 AOTAutograd（图分区）的接口更稳定，变动的频率也低得多。
+
 Inductor 是 torch.compile 的默认编译器后端。它接收 AOTAutograd 分区后的 FX Graph，经过降级、融合、代码生成三个阶段，最终输出高效的 GPU（Triton）或 CPU（C++/OpenMP）代码。
 
 这一节我们从整体上了解 Inductor 的架构和工作流程。

@@ -4,6 +4,11 @@
 图捕获
 =============
 
+.. note::
+
+   **Dynamo 的提交流中，超过 12% 是 Revert。**
+   在 Dynamo 的 6,439 次历史提交中，revert 占了 815 次（约 12.7%）。这反映了团队的一个开发哲学：**先 merge，错了再 revert**，而不是花很长时间逐行 review。在高速迭代的编译器项目中，这比"完美 review 再 merge"更高效——因为有些编译器的 bug 只在特定模型、特定 GPU 上才会出现，review 阶段很难发现。PyTorch 的 CI 虽然严格，但不会覆盖所有模型。所以团队选择用"revert 安全网"代替"review 放大镜"。
+
 这一节是第 3 章的核心。我们来看 Dynamo 符号执行引擎最关键的运作机制——它是怎么把 ``torch.sin(x)`` 这样一个 Python 调用变成 FX Graph 中的一个 ``call_function`` 节点的？
 
 VariableTracker：一切皆变量

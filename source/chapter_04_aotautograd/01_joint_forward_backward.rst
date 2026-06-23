@@ -9,6 +9,11 @@
    **AOTAutograd 的名字为什么叫 "AOT"？**
    "AOT" 代表 Ahead-of-Time（提前）。这里的"提前"是相对于 eager 模式而言的——在 eager 模式下，autograd 的 tape 是在前向传播过程中实时构建的；而 AOTAutograd 在模型执行**之前**（编译阶段）就完成了联合图的创建和分析。这有点像"先画好地图再出发"而不是"边走边记路"。这种提前分析使 AOTAutograd 能够看到前向和反向的全局联系，从而做出更好的优化决策。
 
+.. note::
+
+   **AOTAutograd 是三个组件中提交最少但最稳定的。**
+   在 PyTorch 编译栈的三个核心模块中，AOTAutograd 的提交次数只有 1,317 次，约为 Inductor（8,787 次）的 15%、Dynamo（6,439 次）的 20%。这并非因为它不重要——而是因为 AOTAutograd 是一个**中间层**，接口相对固定。它的核心逻辑（joint graph 创建、functionalization、分区）在 2023 年初就已经基本定型，后续的提交主要是 bug fix 和对新算子的支持适配。与此对比，Inductor 需要持续迭代代码生成策略以覆盖新算子，Dynamo 需要持续适配 CPython 新版本的字节码变化——AOTAutograd 夹在两者之间，反而是最不需要频繁改动的一层。
+
 AOTAutograd 的全称是 **Ahead-of-Time Autograd** ——"提前"的自动微分。它在模型实际运行之前，通过追踪 autograd 的计算过程，生成一张包含**前向（forward）和反向（backward）的联合计算图**。
 
 AOTAutograd 的源码位于 ``pytorch/torch/_functorch/`` 目录，核心代码在 ``aot_autograd.py`` 和 ``_aot_autograd/`` 子目录中：
