@@ -11,4 +11,5 @@
    02_config_tuning
    03_compilation_strategies
    04_custom_op_and_kernel
-   05_future_directions
+   05_export_and_aot_inductor
+   06_future_directions

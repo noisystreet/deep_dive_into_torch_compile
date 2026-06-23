@@ -51,3 +51,19 @@
 
    Joint Graph
       AOTAutograd 生成的前向和反向联合计算图，包含完整的求导信息。
+
+   Symbolic Shapes
+      符号形状机制。用 ``SymNode`` / ``SymInt`` 代替具体维度数值，使一份编译
+      结果适配多种输入尺寸。由 ``ShapeEnv``（``symbolic_shapes.py``）管理。
+
+   ShapeEnv
+      PyTorch 中管理符号形状的核心组件，负责创建符号变量、记录约束、
+      生成 guard 表达式。位于 ``torch/fx/experimental/symbolic_shapes.py``。
+
+   ExportedProgram
+      ``torch.export`` 的输出，包含带形状约束的 FX Graph 及元数据，
+      可作为 Inductor、TensorRT 等后端的输入。
+
+   AOTInductor
+      Inductor 的离线（Ahead-of-Time）变体，在部署前编译所有 kernel，
+      输出 C++ 可加载的共享库（``.so``），消除运行时编译延迟。

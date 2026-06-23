@@ -4,7 +4,11 @@
 FX Passes：图优化
 =================
 
-在 Inductor 的编译流程中，**FX Passes** 是在 lowering 之前对 FX Graph 进行优化的关键工序。它们分为两个阶段：``pre_grad_passes`` 在 AOTAutograd 之前运行，``post_grad_passes`` 在 lowering 之前运行。
+第 4 章完成了 AOTAutograd 侧的图变换（联合求导、分区、decomposition）。从本节开始，我们进入 Inductor 后端——而 **FX Passes** 正是 Inductor 编译流程中、在 lowering 之前对 FX Graph 做优化的第一道工序。
+
+虽然 AOTAutograd 和 FX Passes 在 ``compile_fx_inner`` 中交替出现，但 FX Passes 的代码全部位于 ``torch/_inductor/fx_passes/``，属于 Inductor 职责。因此本书将其放在第 5 章而非第 4 章，避免读者在 AOTAutograd 章节中遇到 Inductor 专有逻辑。
+
+FX Passes 分为两个阶段：``pre_grad_passes`` 在 AOTAutograd 之前运行，``post_grad_passes`` 在 lowering 之前运行。
 
 .. code-block:: text
 
@@ -81,7 +85,7 @@ post_grad_passes
    ├── decompositions         # 分解相关 pass
    └── ...
 
-关于 pattern matching 的具体机制（``@register_graph_pattern``），我们会在第 5.7 节 Pattern Matcher 中详细讨论。
+关于 pattern matching 的具体机制（``@register_graph_pattern``），我们会在第 5.8 节 Pattern Matcher 中详细讨论。
 
 小结
 ======

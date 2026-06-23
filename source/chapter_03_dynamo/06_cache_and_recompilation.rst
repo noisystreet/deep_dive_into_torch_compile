@@ -179,6 +179,4 @@ reset 内部做的事情：
 - 超过缓存上限会 **fallback 到 eager** 模式
 - ``torch.compiler.reset()`` **清空内存缓存**，但不会影响磁盘缓存
 
-至此，第 3 章的内容全部完成。我们从字节码基础开始，走过了字节码分析、图捕获、guard 机制、graph break、缓存与重新编译，覆盖了 TorchDynamo 的完整工作流程。
-
-下一章我们将进入 AOTAutograd——看看 Dynamo 捕获的 FX Graph 如何被扩展为包含前向和反向的联合计算图。
+下一节我们深入 **符号形状**（第 3.7 节）——当输入维度不固定时，Dynamo 如何用 ``ShapeEnv`` 替代具体数值 guard，减少频繁重编译。

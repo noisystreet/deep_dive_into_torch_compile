@@ -117,7 +117,7 @@ Inductor 对 Triton kernel 的缓存分为两层：
 Triton autotune 在 Inductor 中的实现
 ==========================================
 
-第 5.8 节提到了 Inductor 的 autotune 机制。在 Triton 后端，autotune 通过枚举 ``constexpr`` 参数实现：
+第 5.9 节提到了 Inductor 的 autotune 机制。在 Triton 后端，autotune 通过枚举 ``constexpr`` 参数实现：
 
 .. code-block:: python
 

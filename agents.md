@@ -18,13 +18,13 @@
 | `source/index.rst` | Sphinx 根文档（toctree 入口） |
 | `source/chapter_01_intro/` | torch.compile 简介（Hello World、基本用法、性能初探） |
 | `source/chapter_02_overview/` | 整体架构（编译流水线、数据流、FX Graph 基础、编译缓存） |
-| `source/chapter_03_dynamo/` | TorchDynamo（字节码基础、字节码分析、图捕获、guard 机制） |
-| `source/chapter_04_aotautograd/` | AOTAutograd（联合求导、图分区、算子分解、FX Passes） |
-| `source/chapter_05_inductor/` | Inductor 后端（Lowering 流程、IRNode、Scheduler、Pattern Matcher、延迟编译） |
+| `source/chapter_03_dynamo/` | TorchDynamo（字节码基础、字节码分析、图捕获、guard 机制、符号形状） |
+| `source/chapter_04_aotautograd/` | AOTAutograd（联合求导、图分区、算子分解） |
+| `source/chapter_05_inductor/` | Inductor 后端（FX Passes、Lowering 流程、IRNode、Scheduler、Pattern Matcher、延迟编译） |
 | `source/chapter_06_codegen/` | 代码生成（IR 到代码变换、CPU/GPU 代码生成、kernel launch） |
 | `source/chapter_07_triton/` | Triton 编程（语言基础、自定义 kernel） |
 | `source/chapter_08_debug/` | 调试与分析（日志、minimizer、profiling、Dynamic Shapes 调试） |
-| `source/chapter_09_advanced/` | 进阶优化（自定义后端、编译策略） |
+| `source/chapter_09_advanced/` | 进阶优化（自定义后端、编译策略、Export 与 AOTInductor 离线部署） |
 | `source/chapter_10_cases/` | 实战案例（模型优化、训练全流程、Dynamic Shapes、多 GPU） |
 | `source/appendix/` | 附录（参考资源、代码阅读指南、术语表） |
 | `source/examples/` | 可运行的 Python 示例代码 |
@@ -88,13 +88,13 @@
 
 1. **第 1 章：torch.compile 简介** — torch.compile 概念、Hello World、基本用法、性能初探
 2. **第 2 章：整体架构** — 编译流水线、数据流、FX Graph 基础、编译缓存
-3. **第 3 章：TorchDynamo** — 字节码基础 → 字节码分析 → 图捕获 → guard → graph break → 缓存
-4. **第 4 章：AOTAutograd** — 联合求导 → 图分区 → min-cut 重计算 → 算子分解 → FX Passes
-5. **第 5 章：Inductor 后端** — Lowering 流程 → 虚拟化 → IRNode → Scheduler → Pattern Matcher → 延迟编译
+3. **第 3 章：TorchDynamo** — 字节码基础 → 字节码分析 → 图捕获 → guard → graph break → 缓存 → 符号形状
+4. **第 4 章：AOTAutograd** — 联合求导 → 图分区 → min-cut 重计算 → 算子分解
+5. **第 5 章：Inductor 后端** — FX Passes → Lowering 流程 → 虚拟化 → IRNode → Scheduler → Pattern Matcher → 延迟编译
 6. **第 6 章：代码生成** — 代码生成概览 → IR 到代码变换 → CPU/GPU 代码生成 → Kernel Launch
 7. **第 7 章：Triton 编程** — Triton 语言基础与自定义 kernel
 8. **第 8 章：调试与分析** — 日志系统、minimizer、性能分析、Dynamic Shapes
-9. **第 9 章：进阶优化** — 自定义后端、编译配置调优
+9. **第 9 章：进阶优化** — 自定义后端、编译配置调优、Export 与 AOTInductor 离线部署
 10. **第 10 章：实战案例** — 模型优化、训练全流程、Dynamic Shapes、多 GPU
 
 ## 构建方法

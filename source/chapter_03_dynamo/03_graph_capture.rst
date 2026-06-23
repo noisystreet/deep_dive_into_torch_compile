@@ -191,7 +191,7 @@ FakeTensor：符号执行中的"假"张量
            # 返回一个新的 FakeTensor，形状相同
            return FakeTensor(self.shape, self.dtype, self.device)
 
-FakeTensor 让 Dynamo 可以在不实际计算的情况下"假装"执行代码。当代码检查 ``x.shape`` 时，FakeTensor 可以正确返回。当代码检查 ``x.sum() > 0`` 时，FakeTensor 无法提供真实数值——这时就需要 graph break 或者使用 symbolic shapes（第 8 章讨论）。
+FakeTensor 让 Dynamo 可以在不实际计算的情况下"假装"执行代码。当代码检查 ``x.shape`` 时，FakeTensor 可以正确返回。当代码检查 ``x.sum() > 0`` 时，FakeTensor 无法提供真实数值——这时就需要 graph break 或者使用 symbolic shapes（见第 3.7 节）。
 
 Proxy 和 FakeTensor 的关系
 ===============================
