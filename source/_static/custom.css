@@ -1,0 +1,106 @@
+/* Custom CSS for Deep Dive into torch.compile */
+
+/* Code block styling */
+.highlight {
+    background: #f8f8f8;
+    border-radius: 3px;
+}
+
+div[class*="highlight"] pre {
+    font-size: 13px;
+    line-height: 1.4;
+}
+
+/* Python keyword highlighting */
+.highlight-python .k {
+    font-weight: 600;
+}
+
+/* Tables */
+.docutils table {
+    border-collapse: collapse;
+    margin: 1em 0;
+}
+
+.docutils th, .docutils td {
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+}
+
+.docutils th {
+    background: #f0f0f0;
+    font-weight: 600;
+}
+
+/* Glossary styling */
+.glossary dt {
+    font-weight: 600;
+    margin-top: 0.8em;
+    color: #2980b9;
+}
+
+.glossary dd {
+    margin-left: 1.5em;
+    margin-bottom: 0.5em;
+}
+
+/* Custom admonition types */
+div.admonition-insight {
+    border-left: 4px solid #8e44ad;
+}
+
+div.admonition-insight .admonition-title {
+    background: #8e44ad;
+    color: white;
+}
+
+div.admonition-source {
+    border-left: 4px solid #e67e22;
+}
+
+div.admonition-source .admonition-title {
+    background: #e67e22;
+    color: white;
+}
+
+div.admonition-performance {
+    border-left: 4px solid #27ae60;
+}
+
+div.admonition-performance .admonition-title {
+    background: #27ae60;
+    color: white;
+}
+
+div.admonition-experiment {
+    border-left: 4px solid #3498db;
+}
+
+div.admonition-experiment .admonition-title {
+    background: #3498db;
+    color: white;
+}
+
+/* Improve RTD theme readability */
+.wy-nav-content {
+    max-width: 960px;
+}
+
+.rst-content .section ul li,
+.rst-content .section ol li {
+    margin-bottom: 4px;
+}
+
+/* Mermaid diagrams centered */
+.mermaid {
+    text-align: center;
+    margin: 1.5em auto;
+}
+
+/* Code-block captions */
+.code-block-caption {
+    font-size: 13px;
+    font-weight: 600;
+    color: #555;
+    margin-bottom: 4px;
+}

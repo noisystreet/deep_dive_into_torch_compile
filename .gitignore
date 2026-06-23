@@ -17,3 +17,6 @@ __pycache__/
 # 临时文件
 *.tmp
 *.bak
+
+# 本地 PyTorch 源码目录
+pytorch/
