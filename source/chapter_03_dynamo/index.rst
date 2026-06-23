@@ -13,3 +13,4 @@ TorchDynamo
    04_guard_mechanism
    05_graph_break
    06_cache_and_recompilation
+   07_symbolic_shapes

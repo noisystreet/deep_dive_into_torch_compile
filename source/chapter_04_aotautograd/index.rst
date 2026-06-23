@@ -13,4 +13,3 @@ AOTAutograd
    04_functionalization
    05_tangent_and_epilogue
    06_decomposition
-   07_fx_passes

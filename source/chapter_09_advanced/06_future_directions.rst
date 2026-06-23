@@ -15,7 +15,7 @@ torch.compile 是一个快速发展的项目。这一节梳理当前已知的局
 
 **增量编译**。如果模型只有部分结构变化（如添加一个新的 layer），只有变化的子图需要重新编译，其余部分复用已有缓存。
 
-**磁盘缓存共享**。在大规模分布式训练中，让所有 GPU 进程共享同一个磁盘缓存，避免 N 个进程独立编译 N 次。这在第 5.8 节已有初步实现，但还有优化空间。
+**磁盘缓存共享**。在大规模分布式训练中，让所有 GPU 进程共享同一个磁盘缓存，避免 N 个进程独立编译 N 次。这在第 5.9 节已有初步实现，但还有优化空间。
 
 更广泛的算子覆盖
 ===================
@@ -58,7 +58,7 @@ torch.compile 是一个快速发展的项目。这一节梳理当前已知的局
 
 **Inductor IR 的进一步发展**。当前的 IRNode 设计（Pointwise、Reduction 等）对于许多操作是足够的，但对于稀疏操作、动态控制流、复数类型等场景还需要扩展。
 
-**Fusion Regions**。第 5.6 节提到的 Fusion Regions 还在持续演进中，未来可能在 FX Graph 级别做更精细的融合规划。更多细节见 ``fx_passes/fusion_regions.py``。
+**Fusion Regions**。第 5.7 节提到的 Fusion Regions 还在持续演进中，未来可能在 FX Graph 级别做更精细的融合规划。更多细节见 ``fx_passes/fusion_regions.py``。
 
 **更智能的布局优化**。当前的 ``FlexibleLayout`` 允许 codegen 选择输出布局，但选择的策略是启发式规则。未来可能引入基于 cost model 的布局选择。
 
@@ -69,16 +69,7 @@ torch.compile 是一个快速发展的项目。这一节梳理当前已知的局
 
 **vLLM 兼容性**。vLLM 等推理框架使用自定义的 Triton kernel（如 PagedAttention），需要与 Inductor 生成 kernel 的缓存和调度机制兼容。
 
-**AOT Inductor**。AOT（Ahead-of-Time）Inductor 是 Inductor 的一个变体，允许在部署前编译所有 kernel，消除运行时编译。当前已经支持部分场景，但覆盖范围还在扩展中：
-
-.. code-block:: python
-
-   # AOT Inductor 导出
-   exported = torch._export.aot_compile(
-       model,
-       example_inputs,
-       options={"aot_inductor": True},
-   )
+**AOT Inductor**。AOT（Ahead-of-Time）Inductor 允许在部署前编译所有 kernel，消除运行时编译。完整流程与 API 见第 9.5 节。
 
 可调试性和可观测性
 =====================

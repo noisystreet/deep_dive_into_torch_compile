@@ -133,7 +133,7 @@ Inductor 的 ``fx_passes/fuse_attention.py`` 会自动识别 attention 模式：
        ↓
    替换为: scaled_dot_product_attention(Q, K, V)
 
-这个优化由 Pattern Matcher（第 5.7 节）的 ``@register_graph_pattern`` 自动完成。
+这个优化由 Pattern Matcher（第 5.8 节）的 ``@register_graph_pattern`` 自动完成。
 
 Flash Attention
 ====================

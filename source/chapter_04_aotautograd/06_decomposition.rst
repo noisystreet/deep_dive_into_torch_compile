@@ -148,3 +148,5 @@ Inductor 的 decomposition 配置在 ``pytorch/torch/_inductor/decomposition.py`
 - **算子分解（Decomposition）**  将高层算子展开为基本算子，降低后端实现成本
 - **配置在 Inductor** （``decomposition.py`` / ``select_decomp_table()``），**执行在 AOTAutograd** （joint trace 中的 decompositions 参数）
 - 这种 **策略与机制分离**  的设计让 AOTAutograd 保持后端无关，同时让每个后端自主控制分解策略
+
+AOTAutograd 章节的图变换到此结束。Inductor 侧的 FX Passes（``pre_grad_passes`` / ``post_grad_passes``）将在第 5.2 节展开。
