@@ -8,6 +8,7 @@
    :maxdepth: 2
 
    01_codegen_overview
-   02_cpu_codegen
-   03_gpu_codegen
-   04_kernel_launch
+   02_ir_to_code
+   03_cpu_codegen
+   04_gpu_codegen
+   05_kernel_launch

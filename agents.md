@@ -21,7 +21,7 @@
 | `source/chapter_03_dynamo/` | TorchDynamo（字节码基础、字节码分析、图捕获、guard 机制） |
 | `source/chapter_04_aotautograd/` | AOTAutograd（联合求导、图分区、算子分解、FX Passes） |
 | `source/chapter_05_inductor/` | Inductor 后端（Lowering 流程、IRNode、Scheduler、Pattern Matcher、延迟编译） |
-| `source/chapter_06_codegen/` | 代码生成（CPU/GPU 代码生成、kernel launch） |
+| `source/chapter_06_codegen/` | 代码生成（IR 到代码变换、CPU/GPU 代码生成、kernel launch） |
 | `source/chapter_07_triton/` | Triton 编程（语言基础、自定义 kernel） |
 | `source/chapter_08_debug/` | 调试与分析（日志、minimizer、profiling、Dynamic Shapes 调试） |
 | `source/chapter_09_advanced/` | 进阶优化（自定义后端、编译策略） |
@@ -91,7 +91,7 @@
 3. **第 3 章：TorchDynamo** — 字节码基础 → 字节码分析 → 图捕获 → guard → graph break → 缓存
 4. **第 4 章：AOTAutograd** — 联合求导 → 图分区 → min-cut 重计算 → 算子分解 → FX Passes
 5. **第 5 章：Inductor 后端** — Lowering 流程 → 虚拟化 → IRNode → Scheduler → Pattern Matcher → 延迟编译
-6. **第 6 章：代码生成** — CPU/GPU 代码生成、kernel launch
+6. **第 6 章：代码生成** — 代码生成概览 → IR 到代码变换 → CPU/GPU 代码生成 → Kernel Launch
 7. **第 7 章：Triton 编程** — Triton 语言基础与自定义 kernel
 8. **第 8 章：调试与分析** — 日志系统、minimizer、性能分析、Dynamic Shapes
 9. **第 9 章：进阶优化** — 自定义后端、编译配置调优
