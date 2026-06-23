@@ -4,7 +4,68 @@
 CPython 字节码基础
 ========================
 
-前面两章我们反复提到：Dynamo 在"字节码级别"捕获计算图，这是它区别于 TorchScript（AST 解析）和 FX Graph（符号执行）的核心创新。这一节我们先补充 CPython 字节码的基础知识，为第 3 章后续深入 Dynamo 的图捕获机制做准备。
+前面两章我们反复提到：Dynamo 在"字节码级别"捕获计算图，这是它区别于 TorchScript（AST 解析）和 FX Graph（符号执行）的核心创新。在进入字节码细节之前，先把 **TorchDynamo 这一层要解决什么问题、为什么选这条路线** 说清楚——否则后面 FakeTensor、Guard、Graph Break 看起来会像一堆互不相关的技巧，而不是同一套设计下的必然产物。
+
+TorchDynamo 的设计目标
+==========================
+
+Dynamo 处在编译栈最前端，职责可以用一句话概括：**在不改变用户 Python 代码的前提下，尽可能多地捕获 Tensor 计算，并安全地复用编译结果**。
+
+它要同时对抗三个矛盾：
+
+.. list-table::
+   :header-rows: 1
+
+   * - 矛盾
+     - TorchScript 的做法
+     - Dynamo 的选择
+   * - Python 太动态
+     - 限制语法子集，用户改写法
+     - 字节码级捕获 + graph break
+   * - 输入总在变
+     - 固定 shape 或手动标注
+     - guard 验证 + 符号形状（第 3.4、3.7 节）
+   * - 编译结果不能乱用
+     - 编译失败即报错
+     - guard 失败则重编译；实在不行 fallback eager
+
+**曾考虑过的替代方案**。PyTorch 内部和社区尝试过多种前端：
+
+- **TorchScript（AST）**：要求静态类型、限制 Python 特性；与「research 代码随便写」的文化冲突（第 1.1 节）。
+- **``torch.fx.symbolic_trace``**：需要用户提供可 trace 的函数，遇到 ``if x.sum() > 0`` 等数据依赖控制流就失败。
+- **PEP 523 帧拦截 + 字节码符号执行**：不碰源码，在 CPython 每次进入函数帧时介入；遇到 ``print``、自定义 C 扩展等无法处理的操作，**断图继续**，而不是整体失败。
+
+Dynamo 选择了第三条路。关键 invariant 是：**graph break 不是 bug，是设计特性** （第 1.1 节、第 3.5 节）。这直接体现了第 2.1 节的「编译器适应 Python」原则。
+
+**三大机制如何协作**。后续几节会分别展开，这里先给出设计层面的分工——它们是一条链，不是三个独立模块：
+
+.. code-block:: text
+
+   字节码符号执行（InstructionTranslator）
+       │  问题：如何在不真算的情况下知道代码做了什么？
+       ├─ FakeTensor：提供 shape/dtype，不分配显存（第 3.3 节）
+       └─ Proxy / VariableTracker：在 FX Graph 里占位（第 3.3 节）
+       │
+       ▼
+   Guard 树（CheckFunctionManager）
+       │  问题：编译结果能否用于这次输入？
+       └─ 编译期记录条件，运行期 O(1) 检查（第 3.4 节）
+       │
+       ▼
+   缓存 + Graph Break
+       │  问题：何时复用、何时重编译、何时放弃编译？
+       ├─ code object 缓存链表（第 3.6 节）
+       └─ 无法捕获 → 断图，子图分别编译（第 3.5 节）
+
+**代价与边界**。这套设计不是免费的：
+
+- graph break 过多 → kernel launch 碎片化，加速比下降。
+- guard 过细 → 形状略变就重编译，编译时间压过收益（第 3.7 节讨论符号形状作为缓解）。
+- fallback eager → 用户可能感觉「compile 没生效」，需要日志诊断（第 8 章）。
+
+理解这些 trade-off 后，再读字节码指令和 ``InstructionTranslator`` 的实现，就不会迷失在 opcode 细节里。
+
+这一节我们先补充 CPython 字节码的基础知识，为后续深入 Dynamo 的图捕获机制做准备。
 
 什么是字节码
 ================
