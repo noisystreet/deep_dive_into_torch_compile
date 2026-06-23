@@ -1,0 +1,5 @@
+#!/bin/bash
+# Git Pre-Commit Hook: 在提交前自动检查 RST 文档语法
+# 通过 core.hooksPath .githooks 启用
+
+exec bash "$(git rev-parse --show-toplevel)/scripts/precommit-check.sh" --hook
