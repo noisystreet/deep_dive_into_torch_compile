@@ -12,6 +12,7 @@ Inductor 后端
    03_lowering_process
    04_virtualization
    05_ir_node
+   05_ir_design_philosophy
    06_scheduler
    07_fusion_and_layout
    08_pattern_matcher
