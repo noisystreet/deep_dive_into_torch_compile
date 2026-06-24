@@ -171,6 +171,8 @@ ops 原语
 
 在代码生成阶段，这些 ``ops.*`` 调用被翻译为具体的 Triton 或 C++ 代码。
 
+IR 的设计思想与同类对比见 :ref:`ir-design-philosophy`。
+
 小结
 ======
 
@@ -179,4 +181,5 @@ ops 原语
 - **三种主要 IR 类型** ：``Pointwise`` （逐元素）、``Reduction`` （归约）、``TemplateBuffer`` （预定义模板）
 - **Lowering 映射表**：通过 ``register_lowering`` 装饰器将 FX 操作注册到 IR 构造函数
 - **ops 原语**：IR 层面的计算描述，在 codegen 时翻译为具体硬件代码
-- **inner_fn** ：IR 节点的核心——描述"如何在索引下计算值"
+- **inner_fn** ：IR 节点的核心——描述「如何在索引下计算值」
+- **设计思想**：内存中心、Lazy Fusion、与 FX/XLA/MLIR 等的定位对比见 :ref:`ir-design-philosophy`

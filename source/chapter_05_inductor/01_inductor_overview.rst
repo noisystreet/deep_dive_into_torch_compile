@@ -220,7 +220,7 @@ Inductor 有两种运行模式，通过 ``mode`` 参数控制：
 
 - **Inductor 的核心流程**：aot_autograd（decomposition 见第 4.6 节）→ FX Passes（见第 5.2 节）→ Lowering → Scheduler → Codegen
 - **主入口**：``compile_fx.py`` 中的 ``compile_fx`` / ``compile_fx_inner``
-- **架构理念**：Define-by-Run IR；四层分工（FX Pass → Lowering → Scheduler → Codegen）
+- **架构理念**：Define-by-Run IR；四层分工（FX Pass → Lowering → Scheduler → Codegen）；IR 设计思想与同类 IR 对比见 :ref:`ir-design-philosophy`
 - **设计张力**：IR 质量决定融合上限（virtualization 案例见第 5.4 节）
 - **运行模式**：default（heuristic）和 max-autotune（枚举搜索）
 
