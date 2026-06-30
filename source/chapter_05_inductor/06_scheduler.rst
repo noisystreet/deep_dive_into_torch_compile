@@ -17,26 +17,23 @@ Scheduler（定义在 ``pytorch/torch/_inductor/scheduler.py``）的核心职责
 2. **融合（Fusion）**：将兼容的 IRNode 合并为 ``FusedSchedulerNode``
 3. **调度（Scheduling）**：确定最终 kernel 的执行顺序
 
-.. code-block:: text
+.. mermaid::
 
-   Lowering 输出: [IRNode1, IRNode2, IRNode3, IRNode4, ...]
-       │
-       ▼
-   Scheduler.__init__
-       │
-       ├─ 1. 创建 SchedulerNode
-       │      将每个 IRNode 包装为 SchedulerNode
-       │
-       ├─ 2. 依赖分析
-       │      构建 SchedulerNode 之间的依赖边
-       │      （读/写依赖 + 别名解析）
-       │
-       ├─ 3. 融合循环
-       │      基于启发式算法，将兼容的节点融合
-       │      SchedulerNode + SchedulerNode → FusedSchedulerNode
-       │
-       └─ 4. codegen() 调用
-              对每个 FusedSchedulerNode 调用对应后端的 codegen
+   flowchart TD
+       A["Lowering 输出\n[IRNode1, IRNode2, ...]"] --> B["Scheduler.__init__"]
+       
+       B --> C["1. 创建 SchedulerNode\n将每个 IRNode 包装为 SchedulerNode"]
+       C --> D["2. 依赖分析\n构建依赖边\n（读/写依赖 + 别名解析）"]
+       D --> E["3. 融合循环\n基于启发式算法\nSchedulerNode + SchedulerNode\n→ FusedSchedulerNode"]
+       E --> F["4. codegen() 调用\n对每个 FusedSchedulerNode\n调用对应后端的 codegen"]
+       
+       F --> G{"GPU 还是 CPU?"}
+       G -->|"GPU"| H["TritonScheduling.codegen\n(codegen/triton.py)"]
+       G -->|"CPU"| I["CPPScheduling.codegen\n(codegen/cpp.py)"]
+
+.. note::
+
+   融合循环是迭代的——每次成功融合后，新的 ``FusedSchedulerNode`` 会继续参与下一轮融合尝试，直到没有节点可以进一步融合为止。
 
 SchedulerNode 与 FusedSchedulerNode
 ============================================

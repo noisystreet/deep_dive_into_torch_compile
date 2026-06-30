@@ -12,3 +12,4 @@ Triton 编程
    03_triton_kernel_examples
    04_triton_vs_cuda
    05_triton_in_inductor
+   06_triton_compiler_internals

@@ -119,3 +119,333 @@ Triton Kernel 示例
 - **张量核心（Tensor Core）利用**：``tl.dot`` 自动使用 GPU 的 Tensor Core，这是 Triton 相比其他编译器的核心优势
 
 Triton 编译器自动为 ``tl.dot`` 生成使用 Tensor Core 的 PTX 指令。这意味着在 Triton 中编写高效的矩阵乘法 kernel 不需要手动处理 warp-level matrix multiply 的复杂性——这些由编译器处理。
+
+示例 4：矩阵乘法与后处理融合（Matmul + Bias + ReLU）
+===============================================================
+
+在实际的神经网络推理中，矩阵乘法后通常紧跟 bias 加法和 ReLU 激活函数。将这些操作融合到单个 kernel 中可以避免中间结果写回全局内存：
+
+.. code-block:: python
+   :caption: examples/triton_matmul_epilogue.py
+
+   @triton.jit
+   def matmul_bias_relu_kernel(
+       a_ptr, b_ptr, bias_ptr, c_ptr,
+       M, N, K,
+       stride_am, stride_ak,
+       stride_bk, stride_bn,
+       stride_cm, stride_cn,
+       BLOCK_SIZE: tl.constexpr,
+   ):
+       pid_m = tl.program_id(axis=0)
+       pid_n = tl.program_id(axis=1)
+       
+       m_start = pid_m * BLOCK_SIZE
+       n_start = pid_n * BLOCK_SIZE
+       
+       # 累加器（float32 精度）
+       acc = tl.zeros((BLOCK_SIZE, BLOCK_SIZE), dtype=tl.float32)
+       
+       # K 维度迭代
+       for k_start in range(0, K, BLOCK_SIZE):
+           k_offsets = k_start + tl.arange(0, BLOCK_SIZE)
+           mask_k = k_offsets < K
+           mask_m = m_start + tl.arange(0, BLOCK_SIZE) < M
+           mask_n = n_start + tl.arange(0, BLOCK_SIZE) < N
+           
+           # 加载 A 和 B 的块
+           a_ptrs = a_ptr + m_start[:, None] * stride_am + k_offsets[None, :] * stride_ak
+           b_ptrs = b_ptr + k_offsets[:, None] * stride_bk + n_start[None, :] * stride_bn
+           a = tl.load(a_ptrs, mask=mask_m[:, None] & mask_k[None, :])
+           b = tl.load(b_ptrs, mask=mask_k[:, None] & mask_n[None, :])
+           
+           acc = tl.dot(a, b, acc)
+       
+       # --- 后处理融合 ---
+       # 加载 bias 并加到结果的每一行
+       bias = tl.load(bias_ptr + n_start + tl.arange(0, BLOCK_SIZE),
+                      mask=mask_n)
+       acc = acc + bias[None, :]
+       
+       # ReLU 激活
+       acc = tl.where(acc > 0, acc, 0.0)
+       
+       # 存储最终结果
+       mask_m = m_start + tl.arange(0, BLOCK_SIZE) < M
+       mask_n = n_start + tl.arange(0, BLOCK_SIZE) < N
+       c_ptrs = c_ptr + m_start[:, None] * stride_cm + n_start[None, :] * stride_cn
+       tl.store(c_ptrs, acc, mask=mask_m[:, None] & mask_n[None, :])
+
+融合的关键优势：
+
+- **减少内存带宽消耗**：矩阵乘法的结果直接在寄存器中传递给 bias 加法和 ReLU，不需要写回再读取
+- **降低 kernel launch 开销**：三个操作（matmul + bias + relu）只需要一次 kernel launch
+- **寄存器级数据复用**：在 CUDA 中，如果分别执行这三个操作，矩阵乘法的结果需要经过全局内存往返
+
+.. note::
+
+   **Inductor 中的 epilogue 融合。**
+   Inductor 的 ``FusedSchedulerNode`` 会在图级别识别出 matmul 后跟 element-wise 操作的 pattern，将它们融合到同一个 Triton kernel 中。Inductor 生成的 matmul kernel 通常包含一个 epilogue 部分，用于处理 bias、residual、normalization 等后处理操作。
+
+示例 5：融合 Softmax
+=============================
+
+Softmax 是注意力机制中的核心操作。一个高效的 fused softmax kernel 需要处理"求最大值 → 计算指数 → 求和 → 归一化"这四步，并且所有中间计算都在寄存器中完成：
+
+.. code-block:: python
+   :caption: examples/triton_fused_softmax.py
+
+   @triton.jit
+   def fused_softmax_kernel(
+       x_ptr, output_ptr,
+       x_row_stride,
+       n_cols,
+       BLOCK_SIZE: tl.constexpr,
+   ):
+       # 当前处理的行
+       row_idx = tl.program_id(axis=0)
+       row_start = row_idx * x_row_stride
+       
+       # 列偏移
+       col_offsets = tl.arange(0, BLOCK_SIZE)
+       col_mask = col_offsets < n_cols
+       
+       # 加载一整行
+       x = tl.load(x_ptr + row_start + col_offsets, mask=col_mask)
+       
+       # 安全 softmax：先减最大值避免数值溢出
+       x_max = tl.max(x, axis=0)
+       x_sub = x - x_max
+       
+       # 计算指数和
+       x_exp = tl.exp(x_sub)
+       x_sum = tl.sum(x_exp, axis=0)
+       
+       # 归一化
+       y = x_exp / x_sum
+       
+       tl.store(output_ptr + row_start + col_offsets, y, mask=col_mask)
+
+.. tip::
+
+   **数值稳定性。**
+   上述实现使用了 "max 减" 技巧：先减去最大值再计算指数，确保最大指数为 ``exp(0) = 1``，避免 ``exp(大正数)`` 导致的浮点溢出。这是所有数值稳定的 softmax 实现的标准做法。
+
+更完整的版本还需要处理 ``BLOCK_SIZE > n_cols`` 的情况，以及支持二维网格来并行处理多行：
+
+.. code-block:: python
+
+   @triton.jit
+   def fused_softmax_kernel_2d(
+       x_ptr, output_ptr,
+       x_row_stride, output_row_stride,
+       n_rows, n_cols,
+       BLOCK_SIZE: tl.constexpr,
+   ):
+       row_idx = tl.program_id(axis=0)
+       col_idx = tl.program_id(axis=1)
+       
+       row_start = row_idx * x_row_stride
+       col_start = col_idx * BLOCK_SIZE
+       
+       offsets = col_start + tl.arange(0, BLOCK_SIZE)
+       mask = (row_idx < n_rows) & (offsets < n_cols)
+       
+       x = tl.load(x_ptr + row_start + offsets, mask=mask)
+       
+       # 跨 block 的 softmax 需要更复杂的归约
+       # 这里展示的是单 block 覆盖整行的情况
+       x_max = tl.max(x, axis=0)
+       x_exp = tl.exp(x - x_max)
+       x_sum = tl.sum(x_exp, axis=0)
+       
+       tl.store(output_ptr + row_start + offsets, x_exp / x_sum, mask=mask)
+
+.. note::
+
+   **多 block softmax 的挑战。**
+   当 ``n_cols > BLOCK_SIZE`` 时，一行数据被多个 block 处理，需要跨 block 通信来计算全局 max 和 sum。这可以通过两遍扫描实现：第一遍计算局部 max/sum 并写回 scratch 空间，第二遍读取全局 max/sum 完成归一化。Triton 的 ``tl.atomic_add`` 可以用于安全地累加跨 block 的 sum。
+
+Flash Attention 简化示例（概念性理解）
+=================================================
+
+Flash Attention 是 Triton 展示其能力的最具代表性的例子之一。虽然完整的 Flash Attention kernel 非常复杂（涉及 online softmax、分块矩阵乘法、因果掩码等），但其核心思想可以通过一个简化的概念性描述来理解。
+
+核心思想
+------------
+
+Flash Attention 的关键洞见是：**将注意力计算分块进行，在 SRAM 中完成所有中间计算，避免读写 HBM**。传统的注意力计算需要三步：
+
+1. 计算 ``S = Q @ K^T``，写回 HBM
+2. 读取 ``S``，计算 ``P = softmax(S)``，写回 HBM
+3. 读取 ``P``，计算 ``O = P @ V``，写回 HBM
+
+Flash Attention 通过分块 tiling 和 online softmax 将这三步合并：
+
+.. code-block:: text
+
+   传统实现（三步 HBM 往返）：
+       Q, K, V (HBM)
+         │
+         ▼
+       S = Q @ K^T → 写 HBM  ← 一次 HBM 写入
+         │
+         ▼
+       P = softmax(S) → 写 HBM ← 二次 HBM 写入
+         │
+         ▼
+       O = P @ V → 写 HBM    ← 三次 HBM 写入
+
+   Flash Attention（单步在线计算）：
+       Q, K, V (HBM)
+         │
+         ▼（逐块加载到 SRAM）
+       ┌─────────────────────────────────────┐
+       │ 在 SRAM 中完成：                      │
+       │   S_block = Q_block @ K_block^T      │
+       │   P_block = softmax(S_block)          │
+       │   O_block += P_block @ V_block        │
+       └─────────────────────────────────────┘
+         │
+         ▼
+       O (HBM)  ← 仅一次 HBM 写入
+
+Triton 中的简化的 Flash Attention kernel 结构
+--------------------------------------------------------
+
+.. code-block:: python
+
+   @triton.jit
+   def flash_attention_kernel(
+       q_ptr, k_ptr, v_ptr, o_ptr,
+       N_CTX, D_HEAD,
+       BLOCK_SIZE: tl.constexpr,
+   ):
+       # 当前处理的 query 块
+       pid_m = tl.program_id(axis=0)
+       m_start = pid_m * BLOCK_SIZE
+       
+       # 初始化累加器和统计量
+       acc = tl.zeros((BLOCK_SIZE, D_HEAD), dtype=tl.float32)
+       m_i = tl.zeros((BLOCK_SIZE,), dtype=tl.float32) - float("inf")
+       z_i = tl.zeros((BLOCK_SIZE,), dtype=tl.float32)
+       
+       # 在 key/value 维度上分块迭代
+       for pid_n in range(0, N_CTX, BLOCK_SIZE):
+           n_start = pid_n * BLOCK_SIZE
+           
+           # 加载 Q、K、V 的块
+           q = tl.load(q_ptr + offsets_q)
+           k = tl.load(k_ptr + offsets_k)
+           v = tl.load(v_ptr + offsets_v)
+           
+           # 计算 S = Q @ K^T
+           s = tl.dot(q, tl.trans(k))
+           
+           # --- online softmax ---
+           # 更新局部统计量
+           m_new = tl.maximum(m_i, tl.max(s, axis=1))
+           alpha = tl.exp(m_i - m_new)
+           beta = tl.exp(s - m_new[:, None])
+           
+           # 更新累加器
+           acc = acc * alpha[:, None] + tl.dot(beta, v)
+           m_i = m_new
+           z_i = z_i * alpha + tl.sum(beta, axis=1)
+       
+       # 最终归一化
+       acc = acc / z_i[:, None]
+       
+       tl.store(o_ptr + offsets_o, acc)
+
+.. warning::
+
+   **上述代码是概念性说明，并非完整可运行的 Flash Attention 实现。**
+   完整的 Flash Attention kernel 需要处理：因果掩码（causal mask）、head 维度分块、dropout、更精确的 online softmax 算法（由 Rabe & Staats 2018 和 FlashAttention 论文提出）等。实际的 Triton Flash Attention 实现可以在 ``triton/benchmarks/tutorials/flash_attention.py`` 中找到。
+
+Triton 的分块策略详解
+==============================
+
+理解 Triton 如何将 block 内的计算映射到 warp 上，对于编写高性能 kernel 至关重要。
+
+从 block 到 warp 的映射
+-------------------------------
+
+每个 Triton program 处理一个数据 block。Triton 编译器自动将这个 block 的计算分配给 GPU 上的 warp（通常每个 block 分配 4 或 8 个 warp）。分配策略遵循以下原则：
+
+.. mermaid::
+
+   flowchart TD
+       A["Triton Program (Block)<br/>例如: 处理 128x128 矩阵"] --> B["Warp 0<br/>行 0-15, 列 0-127"]
+       A --> C["Warp 1<br/>行 16-31, 列 0-127"]
+       A --> D["Warp 2<br/>行 32-47, 列 0-127"]
+       A --> E["...<br/>更多 warps"]
+
+       B --> F["Thread 0: 元素 (0,0)"]
+       B --> G["Thread 1: 元素 (0,1)"]
+       B --> H["Thread 31: 元素 (0,31)"]
+
+共享内存分块（Shared Memory Tiling）
+-----------------------------------------
+
+对于矩阵乘法这样的操作，Triton 使用共享内存分块来减少全局内存访问。每个 warp 将数据从全局内存加载到共享内存，然后在共享内存上执行计算：
+
+.. code-block:: text
+
+   全局内存 (HBM)                    共享内存 (SRAM)                  寄存器
+   ┌──────────────┐                ┌──────────────┐               ┌──────────┐
+   │ A 矩阵        │  ──block──→   │ A_block       │  ──warp──→   │ Warp 的   │
+   │ (M x K)      │               │ (BLOCK x BLK)│              │ 私有片段  │
+   │              │               │              │              │          │
+   │ B 矩阵        │  ──block──→   │ B_block       │  ──warp──→   │ 累加器    │
+   │ (K x N)      │               │ (BLOCK x BLK)│              │ (fp32)   │
+   └──────────────┘               └──────────────┘              └──────────┘
+
+编译器自动处理：
+
+- **Tiled 加载**：从全局内存加载数据到共享内存，确保合并访问
+- **同步**：在 warp 之间同步共享内存的写入（通过 ``__syncthreads``）
+- **寄存器分配**：将共享内存中的数据分配到 warp 的寄存器文件
+- **流水线**：通过软件流水线隐藏内存延迟（overlap 计算和数据加载）
+
+Block Size 的选择策略
+-----------------------------
+
+Block size 是 Triton kernel 最重要的性能参数之一。选择策略涉及多个权衡：
+
+.. list-table::
+   :header-rows: 1
+
+   * - Block Size
+     - 优势
+     - 劣势
+     - 适用场景
+   * - 64
+     - 寄存器压力小，适合小矩阵
+     - Tensor Core 利用率低
+     - 小 batch、小 head_dim
+   * - 128
+     - 良好的 Tensor Core 利用率
+     - 中等寄存器压力
+     - 大多数通用场景（默认选择）
+   * - 256
+     - 最大化 Tensor Core 吞吐
+     - 高寄存器压力，可能 spill
+     - 大矩阵、T4/A100 等高端 GPU
+
+Inductor 的 autotune 进程会枚举这些 block size 选项，通过实际的 benchmark 选择最优值。
+
+Block Size 与 num_warps 的关系
+--------------------------------------
+
+``num_warps`` 控制每个 Triton program 分配的 warp 数量。它与 block size 共同决定了每个线程处理的工作量：
+
+.. code-block:: text
+
+   每个线程处理的元素数 = BLOCK_SIZE * BLOCK_SIZE / (num_warps * 32)
+
+   例如：
+   - BLOCK_SIZE=128, num_warps=4: 每个线程处理 128*128/(4*32) = 128 个元素
+   - BLOCK_SIZE=128, num_warps=8: 每个线程处理 128*128/(8*32) = 64 个元素
+
+增加 ``num_warps`` 可以提高占用率（occupancy），但会减少每个线程的寄存器数量，可能导致寄存器溢出（spill）到本地内存。

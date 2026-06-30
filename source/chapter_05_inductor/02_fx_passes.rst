@@ -18,7 +18,7 @@ FX Passes：图优化
 编译过程中图的四次「变形」
 ----------------------------------
 
-对照 PyTorch v2.12.1 源码，Inductor 侧的 FX Pass 并非只有 pre/post 两档，中间还有 **joint graph** 这一插入点。``compile_fx`` 在 `compile_fx.py <file:///workspace/pytorch/torch/_inductor/compile_fx.py>`__ 的 ``_compile_fx_main`` 文档字符串里把整条链路概括为四步（2837–2844 行）：
+对照 PyTorch v2.12.1 源码，Inductor 侧的 FX Pass 并非只有 pre/post 两档，中间还有 **joint graph** 这一插入点。``compile_fx`` 在 `compile_fx.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/compile_fx.py>`__ 的 ``_compile_fx_main`` 文档字符串里把整条链路概括为四步（2837–2844 行）：
 
 .. code-block:: text
 
@@ -166,7 +166,7 @@ FX Passes 分为 **三个阶段** （若把 decomposition 算作 AOTAutograd 内
 pre_grad_passes
 ====================
 
-``pre_grad_passes`` 定义在 `pre_grad.py <file:///workspace/pytorch/torch/_inductor/fx_passes/pre_grad.py>`__ （286 行起）。经 ``run_pre_grad_passes`` （``compile_fx.py`` 2587–2634 行）包装后，作为回调注入 AOTAutograd，在 joint trace **之前** 运行。输入是 Dynamo 捕获的原始 FX Graph，尚未进行自动微分。
+``pre_grad_passes`` 定义在 `pre_grad.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/pre_grad.py>`__ （286 行起）。经 ``run_pre_grad_passes`` （``compile_fx.py`` 2587–2634 行）包装后，作为回调注入 AOTAutograd，在 joint trace **之前** 运行。输入是 Dynamo 捕获的原始 FX Graph，尚未进行自动微分。
 
 源码在函数文档字符串里明确警告（292–302 行）：**grad 之前的 IR 不是 functional、也未 normalization**，写 pass 更难——必须正确处理 alias/mutation 与各种 arg schema。因此官方建议：能放到 ``post_grad.py`` 或 ``joint_graph.py`` 的规则尽量后移。
 
@@ -188,7 +188,7 @@ pre_grad_passes
 joint_graph_passes
 ======================
 
-``joint_graph_passes`` （`joint_graph.py <file:///workspace/pytorch/torch/_inductor/fx_passes/joint_graph.py>`__ 619–690 行）在 **尚未分区** 的 joint graph 上运行（推理时为单张前向图）。Inductor 的 ``partition_fn`` 在调用 ``min_cut_rematerialization_partition`` **之前** 先调用 ``_recursive_joint_graph_passes`` （``compile_fx.py`` 2266–2270 行）。
+``joint_graph_passes`` （`joint_graph.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/joint_graph.py>`__ 619–690 行）在 **尚未分区** 的 joint graph 上运行（推理时为单张前向图）。Inductor 的 ``partition_fn`` 在调用 ``min_cut_rematerialization_partition`` **之前** 先调用 ``_recursive_joint_graph_passes`` （``compile_fx.py`` 2266–2270 行）。
 
 **设计目标**：利用 **分区前仍连在一起的** 前向+反向数据流，做 pre/post 都不合适的变换：
 
@@ -211,7 +211,7 @@ joint_graph_passes
 post_grad_passes
 =====================
 
-``post_grad_passes`` （`post_grad.py <file:///workspace/pytorch/torch/_inductor/fx_passes/post_grad.py>`__ 114 行起）在 AOTAutograd 分区与 decomposition **之后**、lowering **之前**运行。文档字符串写明（116–119 行）：**此时的 IR 已经 normalization 且 functionalize**。``_compile_fx_inner`` 通过 ``_recursive_post_grad_passes`` 对每个子图调用它（``compile_fx.py`` 1369 行）；训练时前向、反向 **各编译一次**，故 post_grad **各跑一遍**。
+``post_grad_passes`` （`post_grad.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/post_grad.py>`__ 114 行起）在 AOTAutograd 分区与 decomposition **之后**、lowering **之前**运行。文档字符串写明（116–119 行）：**此时的 IR 已经 normalization 且 functionalize**。``_compile_fx_inner`` 通过 ``_recursive_post_grad_passes`` 对每个子图调用它（``compile_fx.py`` 1369 行）；训练时前向、反向 **各编译一次**，故 post_grad **各跑一遍**。
 
 **设计目标**：在 **基本算子粒度** 上做 **语义级** 替换与布局类优化。此时：
 

@@ -19,38 +19,54 @@
 
 所以，必须将联合图分割为两个独立的 ``fx.GraphModule``：
 
-.. code-block:: text
+.. mermaid::
 
-   联合图（Joint Graph）
-   ┌─────────────────────────────────────┐
-   │  %x    = placeholder                │
-   │  %sin  = torch.sin(%x)              │
-   │  %cos  = torch.cos(%x)              │
-   │  %add  = torch.add(%sin, %cos)      │
-   │  %sum  = torch.sum(%add)            │
-   │  %grad_output = placeholder         │  ← 反向输入的起始点
-   │  %grad_sin = torch.mul(...)         │
-   │  %grad_x   = torch.cos(%grad_sin)   │
-   │  return (%sum, %sin, %cos),         │
-   │         (%grad_x,)                  │
-   └─────────────────────────────────────┘
-                       │
-            partition（图分区）
-                       │
-           ┌───────────┴───────────┐
-           ▼                       ▼
-   ┌──────────────┐      ┌──────────────┐
-   │ Forward       │      │ Backward     │
-   │ %x = ph       │      │ %grad = ph   │
-   │ %sin = sin(%x)│      │ %sin_saved   │
-   │ %cos = cos(%x)│      │   = ph       │
-   │ %add = add(...)│     │ %grad_sin    │
-   │ %sum = sum    │      │   = mul(...) │
-   │ return (%sum, │      │ %grad_x      │
-   │         %sin, │      │   = cos(...) │
-   │         %cos) │      │ return       │
-   └──────────────┘      │   (%grad_x,)  │
-                         └──────────────┘
+   graph TD
+       subgraph Joint["联合图（Joint Graph）"]
+           JX["%x = placeholder"]
+           JSin["%sin = torch.sin(%x)"]
+           JCos["%cos = torch.cos(%x)"]
+           JAdd["%add = torch.add(%sin, %cos)"]
+           JSum["%sum = torch.sum(%add)"]
+           JGrad["%grad_output = placeholder"]
+           JGradSin["%grad_sin = torch.mul(...)"]
+           JGradX["%grad_x = torch.cos(%grad_sin)"]
+           JRet["return (%sum, %sin, %cos), (%grad_x,)"]
+           
+           JX --> JSin --> JCos --> JAdd --> JSum
+           JGrad --> JGradSin --> JGradX
+           JSin -.->|saved| JGradSin
+           JCos -.->|saved| JGradX
+       end
+       
+       Joint ==>|partition| P{"图分区"}
+       P ==> Fwd
+       P ==> Bwd
+       
+       subgraph Fwd["前向图（Forward）"]
+           FX["%x = placeholder"]
+           FSin["%sin = sin(%x)"]
+           FCos["%cos = cos(%x)"]
+           FAdd["%add = add(...)"]
+           FSum["%sum = sum(...)"]
+           FRet["return (%sum, %sin, %cos)"]
+           
+           FX --> FSin --> FCos --> FAdd --> FSum --> FRet
+       end
+       
+       subgraph Bwd["反向图（Backward）"]
+           BG["%grad = placeholder"]
+           BSin["%sin_saved = placeholder"]
+           BCos["%cos_saved = placeholder"]
+           BGradSin["%grad_sin = mul(...)"]
+           BGradX["%grad_x = cos(...)"]
+           BRet["return (%grad_x,)"]
+           
+           BG --> BGradSin
+           BSin --> BGradSin
+           BCos --> BGradX
+           BGradSin --> BGradX --> BRet
+       end
 
 朴素分区策略
 ===============

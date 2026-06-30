@@ -11,30 +11,24 @@ code object 缓存链表
 
 Dynamo 将编译结果缓存到**每个 Python 函数的 code object** 上。具体来说，缓存存储在 ``co_extra`` 字段中——这是 CPython 为每个 code object 预留的一个 ``void*`` 扩展字段，可以存储任意附加数据。
 
-.. code-block:: text
+.. mermaid::
 
-   code object (fn.__code__)
-   ┌──────────────────────────────────────┐
-   │  co_code:       字节码指令            │
-   │  co_consts:     常量池                │
-   │  co_filename:   source.py             │
-   │  co_name:       fn                     │
-   │  ...                                  │
-   │  ┌──────────────────────────────────┐ │
-   │  │  co_extra: Dynamo 缓存链表        │ │
-   │  │                                   │ │
-   │  │  ┌───────┐  ┌───────┐  ┌───────┐ │ │
-   │  │  │entry1 │→→│entry2 │→→│entry3 │ │ │
-   │  │  │       │  │       │  │       │ │ │
-   │  │  │ guard │  │ guard │  │ guard │ │ │
-   │  │  │ code  │  │ code  │  │ code  │ │ │
-   │  │  │ next  │  │ next  │  │ next  │ │ │
-   │  │  └───┬───┘  └───┬───┘  └───┬───┘ │ │
-   │  │      │          │          │     │ │
-   │  │      ▼          ▼          ▼     │ │
-   │  │  可执行函数  可执行函数  可执行函数 │ │
-   │  └──────────────────────────────────┘ │
-   └──────────────────────────────────────┘
+   graph LR
+       subgraph CO["code object (fn.__code__)"]
+           CC["co_code: 字节码指令"]
+           CConst["co_consts: 常量池"]
+           CF["co_filename: source.py"]
+           CN["co_name: fn"]
+           
+           subgraph CE["co_extra: Dynamo 缓存链表"]
+               E1["entry1\n--------\nguard\ncode\nnext"] --> E2["entry2\n--------\nguard\ncode\nnext"]
+               E2 --> E3["entry3\n--------\nguard\ncode\nnext"]
+           end
+       end
+       
+       E1 --> F1["可执行函数"]
+       E2 --> F2["可执行函数"]
+       E3 --> F3["可执行函数"]
 
 每个 cache entry 包含三部分：
 
@@ -52,28 +46,25 @@ Dynamo 将编译结果缓存到**每个 Python 函数的 code object** 上。具
 
 当 ``compiled_fn(x, y)`` 被调用时，Dynamo 依次执行以下步骤：
 
-.. code-block:: text
+.. mermaid::
 
-   入口: compiled_fn(x, y)
-       │
-       ├─ 获取 fn 的 code object
-       │
-       ├─ 从 co_extra 读取缓存链表头
-       │
-       ├─ 遍历链表:
-       │      current = head
-       │      while current is not None:
-       │          if current.guard_manager.check(x, y):
-       │              return current.compiled_code(x, y)
-       │          current = current.next
-       │
-       ├─ 未命中任何缓存:
-       │      ├─ 调用编译流水线（Dynamo → AOTAutograd → Inductor）
-       │      ├─ 生成新的 guard_manager + compiled_code
-       │      ├─ 在链表头部插入新条目
-       │      └─ 执行 compiled_code(x, y)
-       │
-       └─ 返回结果
+   flowchart TD
+       A["入口: compiled_fn(x, y)"] --> B["获取 fn 的 code object"]
+       B --> C["从 co_extra 读取缓存链表头"]
+       C --> D{"current is not None?"}
+       D -->|"是"| E["current.guard_manager.check(x, y)?"]
+       E -->|"通过 ✓"| F["执行 current.compiled_code(x, y)"]
+       E -->|"失败 ✗"| G["current = current.next"]
+       G --> D
+       
+       D -->|"否（遍历完毕）"| H["未命中任何缓存"]
+       H --> I["调用编译流水线\nDynamo → AOTAutograd → Inductor"]
+       I --> J["生成新的 guard_manager + compiled_code"]
+       J --> K["在链表头部插入新条目"]
+       K --> L["执行 compiled_code(x, y)"]
+       
+       F --> M["返回结果"]
+       L --> M
 
 这里有一个性能细节：**缓存链表是从头开始遍历的**。最近插入的条目（即最近一次编译的结果）被放在链表头部。这意味着如果输入模式高度稳定（始终是相同的形状），第一次 miss 后后续调用总能一次命中。
 

@@ -12,3 +12,4 @@
    03_training_workflow
    04_dynamic_shapes_case
    05_multi_gpu_scenarios
+   06_diffusion_models
