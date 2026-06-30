@@ -55,39 +55,39 @@ Minimizer 通过环境变量启用：
 
    TORCHDYNAMO_REPRO_AFTER="aot" python train.py
 
-两种模式的区别在于定位的环节不同：
+两种模式的区别在于定位的环节不同。以下决策树可以帮助你选择合适的模式：
 
-.. code-block:: text
+.. mermaid::
 
-   dynamo 模式: 错误发生在 Dynamo 图捕获阶段？
-        ├─ 是 → 快速定位到错误的 Python 代码
-        └─ 否 → 尝试 aot 模式
-
-   aot 模式: 错误发生在 Inductor 编译阶段？
-        ├─ 是 → 定位到导致编译失败的 FX 子图
-        └─ 否 → 可能是后端问题
+   graph TD
+       START{"编译失败"} -->|"是"| MODE{"选择合适的 Minimizer 模式"}
+       MODE --> DYNAMO["TORCHDYNAMO_REPRO_AFTER=dynamo"]
+       MODE --> AOT["TORCHDYNAMO_REPRO_AFTER=aot"]
+       DYNAMO --> DQ{"Dynamo 图捕获阶段报错?"}
+       DQ -->|"是"| DRESULT["定位到错误的 Python 代码<br/>如: 不支持的 Python 语法"]
+       DQ -->|"否"| TRY_AOT["尝试 aot 模式"]
+       AOT --> AQ{"Inductor / 后端编译阶段报错?"}
+       AQ -->|"是"| ARESULT["定位到导致编译失败的 FX 子图<br/>如: 算子 lowering 失败"]
+       AQ -->|"否"| BACKEND["可能是后端运行时错误<br/>检查 CUDA / Triton 错误"]
+       TRY_AOT --> AOT
 
 Minimizer 的工作原理
 ===========================
 
 Minimizer 的核心是一个**二分搜索（bisect）**算法：
 
-.. code-block:: text
+.. mermaid::
 
-   输入: 完整的 FX Graph（N 个节点）
-
-   Step 1: 将图一分为二
-           前半部分：用 eager 模式执行
-           后半部分：用 compiled 模式执行
-           测试是否有错误
-
-   Step 2: 根据结果缩小范围
-           如果错误消失 → 错误在后半部分
-           如果错误仍在 → 错误在前半部分
-
-   Step 3: 继续二分，直到找到单个有问题的节点
-
-   Step 4: 输出最小复现代码
+   graph TD
+       INPUT["输入: 完整 FX Graph<br/>N 个节点"] --> SPLIT["将图一分为二"]
+       SPLIT --> TEST["前半 eager + 后半 compiled<br/>测试是否复现错误"]
+       TEST --> DECIDE{"错误是否复现?"}
+       DECIDE -->|"是，错误仍在"| FRONT["错误在前半部分<br/>将搜索范围缩小到前半"]
+       DECIDE -->|"否，错误消失"| BACK["错误在后半部分<br/>将搜索范围缩小到后半"]
+       FRONT --> CHECK{"范围中只有一个节点?"}
+       BACK --> CHECK
+       CHECK -->|"否"| SPLIT
+       CHECK -->|"是"| OUTPUT["输出最小复现代码<br/>单个有问题的节点 + 最小输入"]
 
 这个过程相当于一个自动化的 ``git bisect``，但作用于计算图节点而不是 git 提交。
 
@@ -114,6 +114,115 @@ Minimizer 生成的复现脚本格式如下：
    result = compiled(*args, **kwargs)
 
 你可以直接运行这个脚本，或者在此基础上进一步简化。
+
+Minimizer 实战：定位一个真实的编译错误
+=============================================
+
+下面通过一个完整的案例，演示 Minimizer 的实际工作流程。
+
+场景描述
+----------------
+
+假设我们有一个模型，在 ``torch.compile`` 编译时发生了 graph break，但我们不确定是哪个操作导致的。这个模型包含了 ``sin``、``cos``、``print`` 和自定义函数等操作：
+
+.. code-block:: python
+
+   import torch
+
+   def my_custom_function(x):
+       # 这个函数内部包含了不支持的 Python 构造
+       result = 0
+       for i in range(x.shape[0]):  # Python for 循环会导致 graph break
+           result += x[i].item()    # .item() 也不被 dynamo 支持
+       return result
+
+   @torch.compile
+   def model(x):
+       a = torch.sin(x)
+       b = torch.cos(a)
+       print(f"中间值: {b}")  # print 也会导致 graph break
+       c = my_custom_function(b)
+       return c
+
+   x = torch.randn(3)
+   model(x)
+
+直接运行会看到类似这样的输出——模型确实能运行，但性能很差，而且我们不知道具体哪些部位导致了 graph break。
+
+使用 Minimizer 定位问题
+-------------------------------
+
+第一步，启用 Minimizer 的 dynamo 模式：
+
+.. code-block:: bash
+
+   TORCHDYNAMO_REPRO_AFTER="dynamo" python model.py
+
+运行后，Minimizer 会输出类似下面的信息：
+
+.. code-block:: text
+
+   [WARNING] torch._dynamo: Reproducer 已保存到:
+   /tmp/torchinductor_xxx/repro.py
+   =========================
+   最小复现脚本:
+   =========================
+   ================================================================================
+   import torch
+
+   args = [torch.randn(3)]
+   kwargs = {}
+
+   def fn(x):
+       print(f"中间值: {torch.cos(torch.sin(x))}")
+       return None
+
+   compiled = torch.compile(fn, fullgraph=True)
+   compiled(*args, **kwargs)
+   ================================================================================
+
+.. note::
+
+   注意 Minimizer 自动提取出了最小复现路径：它发现 ``print`` 是导致 graph break 的关键操作，
+   并且将输入简化为单个 ``torch.randn(3)``。 ``fullgraph=True`` 是 Minimizer 自动添加的，
+   用于强制要求完整的图捕获——这样只要有任何 graph break 就会直接报错。
+
+第二步，查看生成的复现脚本，确认 root cause 是 ``print`` 操作。修复方法很简单——移除 ``print`` 或者将其移到编译区域之外。
+
+第三步，修复后重新验证：
+
+.. code-block:: python
+
+   import torch
+
+   @torch.compile
+   def model(x):
+       a = torch.sin(x)
+       b = torch.cos(a)
+       # print 已移除，或移到外部
+       c = b.sum()
+       return c
+
+   x = torch.randn(3)
+   model(x)  # 不再有 graph break
+
+完整的调试工作流
+------------------------
+
+可以将 Minimizer 的使用整合进标准调试流程：
+
+.. mermaid::
+
+   graph LR
+       COMPILE["torch.compile 报错"] --> MINIMIZER["设置 TORCHDYNAMO_REPRO_AFTER"]
+       MINIMIZER --> REPRO["Minimizer 生成<br/>复现脚本"]
+       REPRO --> ANALYZE["分析脚本<br/>定位 root cause"]
+       ANALYZE --> FIX["修复代码"]
+       FIX --> VERIFY["重新编译验证"]
+       VERIFY -->|"仍有问题"| MINIMIZER
+       VERIFY -->|"通过"| DONE["问题解决"]
+
+这个流程的核心优势在于 Minimizer 自动完成了最耗时的部分——将大型模型简化为最小复现代码，让你可以直接聚焦于 root cause 本身。
 
 Minimizer 的限制
 ======================

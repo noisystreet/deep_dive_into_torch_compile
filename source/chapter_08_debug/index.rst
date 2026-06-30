@@ -13,3 +13,4 @@
    04_profiling
    05_dynamic_shapes_debug
    06_common_issues
+   07_end_to_end_debugging
