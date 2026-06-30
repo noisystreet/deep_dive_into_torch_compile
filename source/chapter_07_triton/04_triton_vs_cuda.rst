@@ -209,7 +209,7 @@ Triton kernel 的编译开销包括以下几个部分：
 
 **首次启动延迟**。在模型推理服务首次启动时，需要编译所有 Triton kernel。对于包含数百个 kernel 的大模型（如 LLM），这可能导致 30-60 秒的初始化时间。CUDA 的 AOT 编译则没有这个问题。
 
-**动态形状（Dynamic Shapes）**。当模型输入形状变化时，Inductor 可能需要为每种形状生成不同的 Triton kernel（因为 ``constexpr`` 参数推导出的 block size 可能不同）。这导致每次形状变化都可能触发编译。第 5 章讨论的 symbolic shapes 机制就是为了减少这种重新编译。
+**动态形状（Dynamic Shapes）**。当模型输入形状变化时，Inductor 可能需要为每种形状生成不同的 Triton kernel（因为 ``constexpr`` 参数推导出的 block size 可能不同）。这导致每次形状变化都可能触发编译。第 3 章（第 3.8 节）讨论的 symbolic shapes 机制就是为了减少这种重新编译。
 
 **Triton 版本升级**。升级 Triton 版本后，所有缓存失效，需要重新编译所有 kernel。在一个频繁更新的 CI/CD 环境中，这可能影响部署流水线的效率。
 

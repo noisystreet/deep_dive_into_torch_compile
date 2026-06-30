@@ -95,7 +95,7 @@
 性能分析
 --------------
 
-- **torch.cuda.Event**：手动基准测试（第 1.6 节使用）：
+- **torch.cuda.Event**：手动基准测试（第 1.4 节使用）：
 
   .. code-block:: python
 
