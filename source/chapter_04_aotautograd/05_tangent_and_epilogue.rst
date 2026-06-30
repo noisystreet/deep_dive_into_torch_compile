@@ -138,44 +138,91 @@ AOTDispatchAutograd 中的 epilogue 处理
 
 把所有概念串起来，AOTAutograd 处理一个训练函数的完整流程如下：
 
-.. code-block:: text
+.. mermaid::
 
-   用户训练函数
-       │
-       ▼
-   1. 功能化 (functionalization)
-      将 in-place 操作转换为纯函数式
-      输出: fn_func
-       │
-       ▼
-   2. 准备 autograd (fn_prepped_for_autograd)
-      准备前向输出的 tangent_mask
-      输出: fn_prepped
-       │
-       ▼
-   3. 创建联合图 (create_joint)
-      用 autograd.grad 追踪前向和反向
-      输出: joint_fn
-       │
-       ▼
-   4. 追踪联合图 (make_fx)
-      用 proxy tensor 生成 joint FX Graph
-      输出: fx_g (joint graph)
-       │
-       ▼
-   5. 图分区 (min_cut_rematerialization_partition)
-      分割成前向子图和反向子图
-      输出: (fwd_module, bwd_module)
-       │
-       ▼
-   6. 编译 (Inductor compile_fx)
-      分别编译前向和反向
-      输出: (compiled_fwd, compiled_bwd)
-       │
-       ▼
-   7. 运行时包装 (AOTDispatchAutograd)
-      管理前向/反向的执行流和 saved tensors
-      输出: AOTDispatchAutograd.forward()
+   sequenceDiagram
+       participant User as 用户训练函数
+       participant Func as 功能化
+       participant Prep as 准备 autograd
+       participant Joint as 创建联合图
+       participant FX as make_fx 追踪
+       participant Partition as 图分区
+       participant Inductor as Inductor 编译
+       participant Runtime as 运行时包装
+
+       User->>Func: 原始函数 fn
+       Note over Func: 将 in-place 操作<br/>转换为纯函数式
+       Func->>Prep: fn_func（功能化后的函数）
+       Note over Prep: 准备前向输出的<br/>tangent_mask
+       Prep->>Joint: fn_prepped
+       Note over Joint: 用 autograd.grad<br/>追踪前向和反向
+       Joint->>FX: joint_fn
+       Note over FX: 用 proxy tensor<br/>生成 joint FX Graph
+       FX->>Partition: fx_g（joint graph）
+       Note over Partition: min-cut 分区<br/>分割成前向/反向子图
+       Partition->>Inductor: fwd_module + bwd_module
+       Note over Inductor: 分别编译前向和反向
+       Inductor->>Runtime: compiled_fwd + compiled_bwd
+       Note over Runtime: AOTDispatchAutograd<br/>管理执行流和 saved tensors
+
+AOTAutograd 与其他编译栈组件的交互边界
+============================================
+
+AOTAutograd 在 PyTorch 编译栈中扮演着"中间层"的角色，它接收 Dynamo 的输出，处理后交给 Inductor。这个交互边界清晰定义了各组件的职责范围：
+
+.. mermaid::
+
+   flowchart LR
+       subgraph dynamo["Dynamo"]
+           fxgraph["FX Graph（前向）"]
+       end
+
+       subgraph aot["AOTAutograd"]
+           joint_graph["功能化 + 分解 + 联合求导"]
+           partition["图分区<br/>min-cut / 朴素"]
+           fwd["前向子图"]
+           bwd["反向子图"]
+           runtime["运行时包装器<br/>AOTDispatchAutograd"]
+       end
+
+       subgraph inductor["Inductor"]
+           lowering["Lowering + 融合 + 代码生成"]
+       end
+
+       fxgraph -->|"输入"| joint_graph
+       joint_graph --> partition
+       partition --> fwd
+       partition --> bwd
+       fwd -->|"编译"| lowering
+       bwd -->|"编译"| lowering
+       lowering -->|"compiled_fwd"| runtime
+       lowering -->|"compiled_bwd"| runtime
+
+三个接口边界的具体含义：
+
+.. list-table::
+   :header-rows: 1
+
+   * - 边界
+     - 输入
+     - 输出
+     - 关键职责
+   * - Dynamo → AOTAutograd
+     - FX Graph（仅前向）
+     - Joint FX Graph（前向+反向）
+     - 功能化、分解、联合求导追踪
+   * - AOTAutograd → Inductor
+     - Joint FX Graph
+     - 前向子图 + 反向子图（已分解）
+     - 图分区、节点标记、saved tensors 规划
+   * - AOTAutograd → Runtime
+     - 编译后的前向/反向函数
+     - 训练时的前向/反向执行
+     - saved tensors 传递、epilogue 执行
+
+.. note::
+
+   **AOTAutograd 输出的图已经是"干净的"基本算子图。** 经过功能化和分解后，输出给 Inductor 的子图中不再包含 in-place 操作和高层算子（如 ``layer_norm``、``softmax``）。Inductor 可以直接对这些基本算子进行 lowering，不需要再处理功能化或分解的逻辑。
 
 小结
 ======

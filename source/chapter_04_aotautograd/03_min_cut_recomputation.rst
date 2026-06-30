@@ -47,6 +47,67 @@ Min-cut 重计算是在"保存内存"和"增加计算"之间做 tradeoff：
        优点：节省显存
        缺点：增加反向中的计算量
 
+朴素分区 vs Min-Cut 分区对比
+=======================================
+
+通过一个具体的例子来理解两种分区的差异。考虑以下前向函数：
+
+.. code-block:: python
+
+   def fn(x):
+       return torch.sin(torch.cos(torch.exp(x))).sum()
+
+朴素分区下，所有反向需要的中间结果（``exp(x)``、``cos(exp(x))``、``sin(cos(exp(x)))``）都会被保存，反向直接读取这些值计算梯度。
+
+Min-cut 分区则会分析每个操作的计算代价和存储代价，决定哪些中间结果值得保存、哪些可以重计算：
+
+.. mermaid::
+
+   flowchart LR
+       subgraph naive["朴素分区"]
+           direction TB
+           N1["前向保存所有中间结果"] --> N2["exp(x): 保存"]
+           N1 --> N3["cos(exp(x)): 保存"]
+           N1 --> N4["sin(cos(exp(x))): 保存"]
+           N2 --> N_bwd1["反向直接使用"]
+           N3 --> N_bwd1
+           N4 --> N_bwd1
+       end
+
+       subgraph mincut["Min-Cut 分区"]
+           direction TB
+           M1["前向选择性保存"] --> M2["exp(x): 保存（计算昂贵）"]
+           M1 --> M3["cos(exp(x)): 丢弃（反向重计算）"]
+           M1 --> M4["sin(cos(exp(x))): 保存"]
+           M2 --> M_bwd1["反向从 exp(x) 重算 cos(exp(x))"]
+           M4 --> M_bwd2["反向直接使用"]
+       end
+
+两种分区的定量对比：
+
+.. list-table::
+   :header-rows: 1
+
+   * - 对比维度
+     - 朴素分区
+     - Min-Cut 分区
+   * - 保存的中间 tensor 数
+     - 4（含最终输出）
+     - 2（仅 exp(x) 和 sin(cos(exp(x)))）
+   * - 估计内存节省
+     - 基线（0%）
+     - 约 50%（节省两个 tensor 的存储）
+   * - 额外 FLOPs
+     - 0（无重计算）
+     - 1 个 cos + 1 个链式求导（少量增加）
+   * - 适用场景
+     - 显存充足，追求最低计算开销
+     - 显存受限，可接受少量额外计算
+
+.. tip::
+
+   **Min-cut 的决策直觉。** 在上述例子中，min-cut 选择保存 ``exp(x)`` 是因为指数运算计算量大，重计算它的代价高于保存它的存储代价。而 ``cos(exp(x))`` 的计算量相对较小——从 ``exp(x)`` 重算 ``cos`` 只需要一次逐元素操作——因此被标记为"丢弃并在反向中重计算"。
+
 min_cut_rematerialization_partition 的实现
 =================================================
 
@@ -73,34 +134,46 @@ min_cut_rematerialization_partition 的实现
 
 对于候选节点集合，构建一个最大流最小割图。这个图中：
 
-.. code-block:: text
+.. mermaid::
 
-   源点（source） = "保存"（不重计算）
-   汇点（sink）   = "重计算"
+   flowchart TD
+       subgraph mincut_graph["Min-Cut 决策图"]
+           source["源点（source）= 保存（不重计算）"]
+           sink["汇点（sink）= 重计算"]
 
-   节点是联合图中的候选操作
-   边上的容量表示"保存这个节点需要消耗的显存"
+           node1["候选节点 A"]
+           node2["候选节点 B"]
+           node3["候选节点 C"]
 
-   如果一个节点在源点一侧 → 保存（不重计算）
-   如果一个节点在汇点一侧 → 丢弃（反向中重计算）
+           source -->|"容量 = 存储代价"| node1
+           source -->|"容量 = 存储代价"| node2
+           node1 -->|"容量 = 存储代价"| sink
+           node2 -->|"容量 = 存储代价"| node3
+           node3 -->|"容量 = 存储代价"| sink
+       end
+
+       cut["最小割"]
+       cut --> save_side["源点侧节点 → 保存（不重计算）<br/>占用显存，反向直接使用"]
+       cut --> remat_side["汇点侧节点 → 丢弃（反向重计算）<br/>节省显存，反向重新计算"]
 
 **步骤 3：执行 max-flow 算法**
 
 在构建好的图上执行最大流算法，找到最小割。最小割将节点划分为两组：保存 vs 重计算。
 
-.. code-block:: text
+.. mermaid::
 
-                     min cut（最小割）
-                         │
-            ┌────────────┴────────────┐
-            ▼                         ▼
-   保存（不重计算）              丢弃（反向重计算）
-   ┌────────────────┐       ┌────────────────┐
-   │ sin(x)         │       │ cos(sin(x))    │
-   │ x * sin(x)     │       │ x + sin(x)     │
-   │ ...            │       │ ...            │
-   └────────────────┘       └────────────────┘
-   占用显存                    反向中重新计算
+   flowchart LR
+       cut["min cut（最小割）"]
+       cut --> save["保存（不重计算）
+       sin(x)
+       x * sin(x)
+       ...
+       占用显存"]
+       cut --> remat["丢弃（反向重计算）
+       cos(sin(x))
+       x + sin(x)
+       ...
+       反向中重新计算"]
 
 算法的核心目标是：**尽可能少保存中间结果，同时确保反向的额外计算开销不超过收益**。
 
@@ -194,6 +267,49 @@ min-cut 重计算的效果取决于模型的具体结构和可重计算操作的
      - 效果有限
 
 需要注意的是，重计算节省显存的效果在大 batch size 场景下最明显（因为中间结果的尺寸与 batch size 成正比）。
+
+查看分区决策
+====================
+
+通过 ``TORCH_LOGS`` 可以观察 AOTAutograd 的分区决策，看到哪些 tensor 被保存了、哪些被标记为重计算：
+
+.. code-block:: bash
+
+   TORCH_LOGS="+aot" python -c "
+   import torch
+
+   def fn(x):
+       return torch.sin(torch.cos(torch.exp(x))).sum()
+
+   compiled_fn = torch.compile(fn, fullgraph=True)
+   x = torch.randn(3, requires_grad=True)
+   result = compiled_fn(x)
+   result.backward()
+   "
+
+在日志中，可以找到 ``aot_graphs`` 输出的前向图和反向图信息。其中：
+
+- 前向图的 ``placeholder`` 节点中包含了 **saved tensors** 的列表——这些是分区器决定保存在前向中的中间结果
+- 反向图的开头可以看到 **重计算节点**——分区器决定在反向中重新计算的节点
+
+.. code-block:: text
+
+   日志片段示例:
+   === Forward graph =========================================
+   ...
+   Placeholder: x
+   Placeholder: sin          # saved tensor：保存 sin 的结果
+   ...
+   
+   === Backward graph ========================================
+   ...
+   aten.cos                    # 重计算：cos 被重新计算
+   aten.mul                    # 重计算：链式求导的中间步骤
+   ...
+
+.. tip::
+
+   **更详细的日志级别。** 使用 ``TORCH_LOGS="+aot,+partition"`` 可以查看分区器的详细决策过程，包括每个节点被分配到哪个分区以及 min-cut 算法的具体切割结果。这对于调试显存相关问题非常有用。
 
 小结
 ======

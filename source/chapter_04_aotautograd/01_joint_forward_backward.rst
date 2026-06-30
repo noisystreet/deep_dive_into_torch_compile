@@ -23,15 +23,19 @@ eager 模式下，autograd 的 tape 在前向执行时 **逐 op 追加**，``bac
 
 AOTAutograd 的设计目标：**把 autograd 从运行时搬到编译时**，在一张 **联合图（joint graph）** 上做全局分析，再拆成可独立编译的前向/反向子图。
 
-.. code-block:: text
+.. mermaid::
 
-   eager autograd:
-       前向执行 → 实时写 tape → backward 逐段解释执行
-       （编译器看不到完整前向+反向）
-
-   AOTAutograd:
-       编译期 trace 联合图 → 分区 → 分别交给 Inductor
-       （编译器看到全局，可做跨前向/反向优化）
+   flowchart LR
+       subgraph eager["Eager Autograd"]
+           A1["前向执行"] --> A2["实时写 tape"]
+           A2 --> A3["backward 逐段解释执行"]
+           A3 -.-> A4["（编译器看不到完整前向+反向）"]
+       end
+       subgraph aot["AOTAutograd"]
+           B1["编译期 trace 联合图"] --> B2["图分区"]
+           B2 --> B3["分别交给 Inductor"]
+           B3 -.-> B4["（编译器看到全局，可做跨前向/反向优化）"]
+       end
 
 **为什么必须是「中间层」**。AOTAutograd 故意 **不** 生成 Triton 代码、 **不** 捕获 Python 字节码。它只消费 FX Graph，输出仍是 FX Graph——这体现了第 2.1 节的 **阶段专精** 与 **策略/机制分离**：
 
@@ -174,34 +178,38 @@ create_joint：联合图的创建
 
 流程分解如下：
 
-.. code-block:: text
+.. mermaid::
 
-   输入: primals（前向输入）+ tangents（反向起始梯度）
-       │
-       ▼
-   第 1 步: 执行 fn(*primals)
-       │  用 FakeTensor 执行前向函数
-       │  记录所有前向操作到 FX Graph
-       ▼
-   输出: outs + tangent_mask
-       │  tangent_mask 标记哪些输出需要梯度
-       ▼
-   第 2 步: 筛选需要梯度的输出
-       │  outs_to_grad = [o for o, m in zip(outs, mask) if m]
-       ▼
-   第 3 步: autograd.grad(outs_to_grad, primals, tangents)
-       │  用 proxy tensor 走 autograd
-       │  记录所有反向操作到同一个 FX Graph
-       ▼
-   输出: gradient w.r.t. primals
-       │
-       ▼
-   最终: Joint FX Graph
-       ┌──────────────────────────────────────┐
-       │  Forward 节点 (被标记 is_forward)      │
-       │  Backward 节点 (被标记 is_backward)    │
-       │  所有节点在同一个 FX Graph 中           │
-       └──────────────────────────────────────┘
+   flowchart TD
+       input["输入: primals（前向输入）+ tangents（反向起始梯度）"]
+
+       step1["第1步: 执行 fn(*primals)
+       用 FakeTensor 执行前向函数
+       记录所有前向操作到 FX Graph"]
+
+       output1["输出: outs + tangent_mask
+       tangent_mask 标记哪些输出需要梯度"]
+
+       step2["第2步: 筛选需要梯度的输出
+       outs_to_grad = [o for o, m in zip(outs, mask) if m]"]
+
+       step3["第3步: autograd.grad(outs_to_grad, primals, tangents)
+       用 proxy tensor 走 autograd
+       记录所有反向操作到同一个 FX Graph"]
+
+       output2["输出: gradient w.r.t. primals"]
+
+       joint["最终: Joint FX Graph
+       Forward 节点（标记 is_forward）
+       Backward 节点（标记 is_backward）
+       所有节点在同一个 FX Graph 中"]
+
+       input --> step1
+       step1 --> output1
+       output1 --> step2
+       step2 --> step3
+       step3 --> output2
+       output2 --> joint
 
 关键细节：``tangent_mask`` 的作用。
 
@@ -274,6 +282,65 @@ AOTAutograd 和 PyTorch 原有的 eager autograd 的核心差异在于"什么时
      - Python level tracing + make_fx
 
 这也解释了 AOTAutograd 名字中的 "AOT"（Ahead-of-Time）：它在训练开始之前（编译阶段）而不是训练过程中（运行时阶段）完成自动微分的处理。
+
+联合图的节点标记与元信息
+==============================
+
+在联合图中，每个节点都通过 ``node.meta["partitioner_tag"]`` 标记其归属——属于前向还是反向。这个标记是图分区阶段的重要依据。
+
+一个具体的例子能更清晰地展示这个标记过程。考虑函数：
+
+.. code-block:: python
+
+   def fn(x):
+       return torch.sin(torch.cos(x)).sum()
+
+经过 joint trace 后的联合图如下（简化示意）：
+
+.. mermaid::
+
+   flowchart TD
+       subgraph forward["前向子图（is_forward）"]
+           x["x (placeholder)"] --> cos["cos"]
+           cos --> sin["sin"]
+           sin --> sum["sum"]
+       end
+
+       subgraph backward["反向子图（is_backward）"]
+           grad_output["grad_output (tangent)"] --> sum_bwd["sum_backward"]
+           sum_bwd --> sin_bwd["sin_backward"]
+           sin -.->|"saved"| sin_bwd
+           sin_bwd --> cos_bwd["cos_backward"]
+       end
+
+节点标记的代码实现在 ``create_joint`` 中：
+
+.. code-block:: python
+
+   # 在 create_joint 中，通过 autograd 的 tracing 过程
+   # 自动为节点添加 partitioner_tag
+   for node in fx_graph.nodes:
+       if node.op == "placeholder":
+           if node.name.startswith("tangent"):
+               node.meta["partitioner_tag"] = "is_backward"
+           else:
+               node.meta["partitioner_tag"] = "is_forward"
+       elif 属于反向自动生成的梯度计算:
+           node.meta["partitioner_tag"] = "is_backward"
+       else:
+           node.meta["partitioner_tag"] = "is_forward"
+
+标记规则遵循一个简单原则：
+
+- 前向函数的原始操作（``cos``、``sin``、``sum``）→ ``is_forward``
+- autograd 自动生成的反向操作（``cos_backward``、``sin_backward``）→ ``is_backward``
+- 被反向引用的前向节点（如 ``sin`` 的结果被反向使用）→ 仍标记为 ``is_forward``，但会在分区阶段作为 saved tensor 被保留
+
+这些元信息在 ``collect_metadata_analysis.py`` 中被进一步分析，以确定每个节点在分区时的行为。
+
+.. note::
+
+   **partitioner_tag 的作用范围。** 这个标记只影响图的**分区**阶段——它告诉分区器哪些节点属于前向、哪些属于反向。分区完成后，这些标记不再需要，因为前向子图和反向子图已经被分开为独立的 FX Graph。
 
 小结
 ======

@@ -21,6 +21,32 @@ PyTorch 有许多高层算子（如 ``aten.native_layer_norm``、``aten._softmax
    rstd = aten.rsqrt(var + eps)
    output = (x - mean) * rstd * weight + bias
 
+分解前后的图结构变化：
+
+.. mermaid::
+
+   flowchart LR
+       subgraph before["分解前"]
+           ln["aten.native_layer_norm(x, weight, bias)"]
+       end
+       subgraph after["分解后"]
+           mean["mean(x, dim=-1)"]
+           sub1["x - mean"]
+           sq["(x - mean) ** 2"]
+           var["mean(sq, dim=-1)"]
+           add_eps["var + eps"]
+           rstd["rsqrt(add_eps)"]
+           sub2["x - mean"]
+           normed["sub2 * rstd"]
+           scaled["normed * weight"]
+           out["scaled + bias"]
+           sub1 --> sq
+           sub2 --> normed
+       end
+       before --> after
+
+分解后的图中，7 个基本算子全部是 **pointwise 操作或 reduction 操作**，这些操作在 Inductor 中可以被高效地融合。
+
 为什么要分解？
 ==================
 
@@ -53,22 +79,120 @@ AOTAutograd 通过 ``decompositions`` 参数接收一个字典，映射需要分
 
 在 ``make_fx`` 内部，当追踪到 ``aten.native_layer_norm`` 时，proxy tensor 系统检查这个算子是否在 decomposition 表中。如果在，则调用对应的分解函数，将 ``layer_norm`` 替换为 ``mean + var + rsqrt`` 的子图。
 
+常见算子的分解展开
+=========================
+
+不同高层算子的分解方式各不相同，但都遵循"将复杂算子拆解为基本算子"的原则。以下以 ``softmax`` 和 ``gelu`` 为例展示常见的分解模式。
+
+**Softmax 的分解。** ``aten._softmax`` 被分解为 exp、sum、div 三步：
+
+.. code-block:: python
+
+   # aten._softmax(x, dim) 被分解为
+   exp_x = aten.exp(x)
+   sum_exp = aten.sum(exp_x, dim, keepdim=True)
+   result = aten.div(exp_x, sum_exp)
+
+分解后的计算图：
+
+.. mermaid::
+
+   flowchart LR
+       softmax["aten._softmax(x, dim)"]
+       exp["aten.exp(x)"]
+       sum_exp["aten.sum(exp, dim, keepdim=True)"]
+       div["aten.div(exp, sum_exp)"]
+       result["输出"]
+
+       softmax --> exp
+       exp --> sum_exp
+       exp --> div
+       sum_exp --> div
+       div --> result
+
+分解后，``exp`` 和 ``div`` 是逐元素操作，``sum`` 是 reduction 操作。如果 softmax 的输入是 ``x`` 而 ``x`` 本身也是来自其他逐元素操作的结果，Inductor 可以将它们融合成一个 kernel。
+
+**GELU 的分解。** GELU 激活函数有两种近似形式。精确形式使用 ``erf`` 函数，Tanh 近似形式则展开为多项式：
+
+.. code-block:: python
+
+   # aten.gelu(x, approximate='tanh') 被分解为
+   x3 = x * x * x
+   inner = 0.044715 * x3
+   inner = x * (0.79788456 + inner)  # 0.79788456 = sqrt(2/pi)
+   tanh_inner = aten.tanh(inner)
+   result = x * (1.0 + tanh_inner) * 0.5
+
+分解后的计算图：
+
+.. mermaid::
+
+   flowchart TD
+       gelu["aten.gelu(x, approximate='tanh')"]
+       pointwise1["x * x * x"]
+       pointwise2["0.044715 * x3"]
+       pointwise3["0.79788456 + pw2"]
+       pointwise4["x * pw3"]
+       tanh["aten.tanh(pw4)"]
+       pointwise5["1.0 + tanh"]
+       pointwise6["x * pw5 * 0.5"]
+       result["输出"]
+
+       gelu --> pointwise1
+       pointwise1 --> pointwise2
+       pointwise2 --> pointwise3
+       pointwise3 --> pointwise4
+       pointwise4 --> tanh
+       tanh --> pointwise5
+       pointwise5 --> pointwise6
+       pointwise6 --> result
+
+GELU 分解后全部是逐元素操作，包含一次 ``tanh``。这些操作可以融合成一个 pointwise kernel，不需要额外 kernel launch。
+
+.. tip::
+
+   **分解与融合是对立统一的。** 分解（Decomposition）将大算子拆开暴露中间结果，融合（Fusion）再将相邻的逐元素操作合并。两者看似方向相反，实则目标一致——让编译器能够更灵活地选择融合边界。分解提供了更细粒度的 IR，融合在此基础上做合并。
+
 决定权与执行权的分离
 ===========================
 
 这是 PyTorch 编译器中一个重要的架构设计：**策略与机制分离（Strategy vs Mechanism）** 。
 
-.. code-block:: text
+.. mermaid::
 
-   策略层（谁决定）              机制层（谁执行）
-   ┌──────────────────┐        ┌──────────────────┐
-   │  Inductor        │──策略──→│  AOTAutograd     │
-   │  decomposition.py│        │  joint trace     │
-   │  select_decomp_  │        │  接受 decomposi- │
-   │  table()         │        │  tions 参数      │
-   └──────────────────┘        └──────────────────┘
+   flowchart LR
+       subgraph strategy["策略层（谁决定）"]
+           inductor["Inductor
+           decomposition.py
+           select_decomp_table()"]
+           other_backend["FooBackend
+           自定义 decompositions"]
+       end
 
-   决定"分解哪些算子"           执行"如何分解"
+       subgraph mechanism["机制层（谁执行）"]
+           aot["AOTAutograd
+           joint trace
+           接受 decompositions 参数"]
+           execution["在追踪时遇到目标算子
+           调用分解函数
+           展开为基本算子子图"]
+       end
+
+       subgraph output["输出"]
+           decomposed["分解后的基本算子图
+           mean, add, mul, exp, ..."]
+       end
+
+       inductor -->|"select_decomp_table()"| aot
+       other_backend -->|"自定义 decompositions"| aot
+       aot --> execution
+       execution --> decomposed
+
+   style strategy fill:#e1f5fe
+   style mechanism fill:#f3e5f5
+   style output fill:#e8f5e9
+
+图中左侧是**策略层**——决定"分解哪些算子"；右侧是**机制层**——执行"如何分解"。
 
 为什么这样拆分？
 

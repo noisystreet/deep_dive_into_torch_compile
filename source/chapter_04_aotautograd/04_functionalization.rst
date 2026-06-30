@@ -79,18 +79,16 @@ to_fun 和 from_fun
 
 FunctionalTensor 是一个包装类（继承自 ``torch.Tensor``），它拦截所有 in-place 操作，将它们转换为 out-of-place 操作加上"版本号更新"：
 
-.. code-block:: text
+.. mermaid::
 
-   x = FunctionalTensor(tensor)
-
-   x.add_(1)  ← 被拦截
-       │
-       ▼
-   FunctionalTensor 内部:
-       1. 读取 x 的当前值
-       2. 执行 out-of-place 的 torch.add(x, 1)
-       3. 将 x 的内部存储替换为计算结果
-       4. 递增版本号
+   flowchart TD
+       x["x = FunctionalTensor(tensor)"] --> add_["x.add_(1) ← 被拦截"]
+       add_ --> intercept["FunctionalTensor 内部处理"]
+       intercept --> step1["1. 读取 x 的当前值"]
+       step1 --> step2["2. 执行 out-of-place 的 torch.add(x, 1)"]
+       step2 --> step3["3. 将 x 的内部存储替换为计算结果"]
+       step3 --> step4["4. 递增版本号"]
+       step4 --> result["从外部看: x 的值被更新了<br/>FX Graph 记录: torch.add(x, 1)（out-of-place）"]
 
 从外部看，``x.add_(1)`` 的效果和 eager 模式一致——``x`` 的值被更新了。但从图捕获的角度看，实际记录的 FX 操作是 ``torch.add(x, 1)``（out-of-place），而不是 ``torch.add_(x, 1)``。
 
@@ -196,6 +194,59 @@ Functionalization 的处理方式是：
        └─ 5. 图分区 → 编译
 
 功能化之后，联合图中的操作都是纯函数式的，可以被编译器安全地融合、重排、重计算。
+
+功能化的性能代价
+=========================
+
+Functionalization 为编译器带来了图纯函数化的好处，但并非没有代价。理解这些代价对于性能调优很重要。
+
+**额外 clone/copy 操作的开销。** 每次 in-place 操作被功能化时，需要先 clone 原始 tensor，再执行 out-of-place 版本。这带来了额外的时间和显存开销：
+
+.. code-block:: text
+
+   功能化前:
+       x.add_(1)           # 直接修改 x，无额外内存分配
+       return x * 2
+
+   功能化后:
+       x_clone = x.clone() # 额外 clone：分配新内存 + 数据拷贝
+       x_updated = add(x_clone, 1)  # out-of-place
+       return mul(x_updated, 2)
+
+对于大 tensor（如 batch size 较大的中间特征图），clone 操作的数据拷贝开销是不可忽视的。此外，view 操作的功能化涉及 ``copy_`` 同步操作，同样需要额外的内存分配。
+
+**何时功能化代价显著：**
+
+.. list-table::
+   :header-rows: 1
+
+   * - 场景
+     - 代价分析
+   * - 大量 in-place 操作（如模型中有频繁的 ``add_``、``mul_``）
+     - 每个 in-place 操作都产生一次 clone，clone 数量与 in-place 操作数成正比
+   * - 大 tensor 上的 in-place 操作（如大批次的中间特征图）
+     - clone 的数据量与 tensor 尺寸成正比，大 tensor 的 clone 代价显著
+   * - 训练初始阶段（warmup）
+     - 额外的内存分配和释放导致更高的内存碎片化
+   * - view + in-place 组合（如 ``x[:, 1:] += 1``）
+     - 不仅需要 clone，还需要 ``copy_`` 同步，开销加倍
+
+**Inductor 的消除冗余 copy 优化。** Inductor 在 post-grad passes 阶段会尝试消除 functionalization 引入的冗余 copy。具体来说，Inductor 的分析器识别出某些 clone 操作是"不必要的"——如果原始 tensor 在被 clone 之后不再被使用，那么可以直接复用原始 tensor 的存储，跳过 clone。
+
+.. code-block:: python
+
+   # Inductor 可能的优化：
+   # 如果 x 之后不再被使用
+   x_clone = x.clone()     # ← 这个 clone 可以被消除
+   x_updated = add(x_clone, 1)
+   return mul(x_updated, 2)
+   # 优化后：直接修改 x 的存储，无需 clone
+
+但并非所有 clone 都可以被消除。如果原始 tensor 后续还有引用（例如作为函数的返回值或参与其他计算），clone 就必须保留。这取决于 Inductor 的别名分析能力。
+
+.. seealso::
+
+   **Functionalization 的代价权衡。** 功能化的代价本质上是"为图纯函数化付出的编译期保险"。它使得编译器能够安全地重排、融合和重计算图中的操作，这些优化带来的收益通常远超 clone 的开销。当出现性能瓶颈时，可以通过减少模型中的 in-place 操作来降低功能化代价——但这通常只在极端场景下才有必要，因为 Inductor 的冗余 copy 消除已经能处理大部分常见情况。
 
 小结
 ======
