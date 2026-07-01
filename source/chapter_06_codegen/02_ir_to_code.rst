@@ -419,7 +419,7 @@ AsyncCompile 利用了 Triton kernel 之间的编译独立性——既然多个 
 从 IRNode 到 Triton：完整追踪
 ====================================
 
-以下用一个简单模型 `sin(x) + cos(x)` 追踪从 IRNode 到最终 Triton 代码的完整变换过程：
+以下用一个简单模型 ``sin(x) + cos(x)`` 追踪从 IRNode 到最终 Triton 代码的完整变换过程：
 
 .. code-block:: python
 

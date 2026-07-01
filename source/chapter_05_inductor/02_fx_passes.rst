@@ -260,9 +260,9 @@ post_grad_passes
 ======
 
 - **分阶段原因**：图经历「前向 → joint/decomp → joint pass → 分区 → 前向+反向子图 → lowering」多次变形，pass 必须在 **对应形态与 IR 约束** 上运行
-- **pre_grad_passes**：joint trace **之前** 瘦身；IR **未** functionalize，写 pass 成本高（`pre_grad.py` 292–302 行）
+- **pre_grad_passes**：joint trace **之前** 瘦身；IR **未** functionalize，写 pass 成本高（``pre_grad.py`` 292–302 行）
 - **joint_graph_passes**：**分区之前** 在 joint（或推理前向）图上做 pad_mm、常量折叠等；由 ``partition_fn`` / ``compile_fx_forward`` 触发
 - **decomposition**：在 AOTAutograd **内部**，改变节点集合（第 4.6 节）
-- **post_grad_passes**：lowering **之前** 对前向/反向 **分别** 做语义级模式匹配；IR 已 functionalize（`post_grad.py` 116–119 行）
+- **post_grad_passes**：lowering **之前** 对前向/反向 **分别** 做语义级模式匹配；IR 已 functionalize（``post_grad.py`` 116–119 行）
 - **与 Scheduler 互补**：FX pass 改「算什么」，Scheduler 在 IR 层做 kernel 融合（第 5.6–5.8 节）
 - **子图递归**：pre/joint/post 三套入口均通过 ``_recursive_*`` 处理嵌套 ``GraphModule``，与高阶算子子图 pass （``run_joint_graph_passes_on_hops``）配套
