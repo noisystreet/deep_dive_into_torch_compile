@@ -10,10 +10,14 @@
 
 .. toctree::
    :maxdepth: 2
+
+   preface/index
+
+.. toctree::
+   :maxdepth: 2
    :numbered:
    :caption: 目录
 
-   preface/index
    chapter_01_intro/index
    chapter_02_overview/index
    chapter_03_dynamo/index
