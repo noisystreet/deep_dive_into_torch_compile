@@ -78,7 +78,7 @@ torch.compile 是一个快速发展的项目。这一节梳理当前已知的局
 
 - **Perfetto 集成 ** ：将编译事件导出到 Perfetto trace 格式，与 Chrome Trace 兼容但提供更丰富的信息
 - **编译时间报告 ** ：在每个编译步骤结束后输出耗时统计，帮助定位编译瓶颈
-- **Graph 可视化 ** ：在 ``torch.compiler.debug`` 报告中加入更详细的 Graph 可视化
+- **Graph 可视化 ** ：在 ``TORCH_COMPILE_DEBUG`` 报告中加入更详细的 Graph 可视化
 
 降低使用门槛
 =================

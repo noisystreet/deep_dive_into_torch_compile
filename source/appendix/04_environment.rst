@@ -83,12 +83,13 @@
 
   关于日志系统的完整说明，见第 8 章。
 
-- **torch.compiler.debug** ：生成 HTML 格式的编译调试报告：
+- **TORCH_COMPILE_DEBUG** ：生成 HTML 格式的编译调试报告：
 
   .. code-block:: python
 
-     with torch.compiler.debug():
-         compiled_fn(x, y)
+     import os
+     os.environ["TORCH_COMPILE_DEBUG"] = "1"
+     compiled_fn(x, y)
 
   报告包含捕获到的 FX Graph、graph break 位置、生成的代码等。
 

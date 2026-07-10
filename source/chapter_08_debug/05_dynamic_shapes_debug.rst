@@ -94,6 +94,7 @@ Dynamic Shapes 调试
 
 .. code-block:: python
 
+   import torch
    import torch._dynamo as dynamo
    
    x = torch.randn(100)

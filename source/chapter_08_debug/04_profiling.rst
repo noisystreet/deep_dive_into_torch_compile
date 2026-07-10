@@ -223,7 +223,7 @@ torch.profiler + torch.compile 高级分析
            model(x)
 
    prof.export_chrome_trace("eager_trace.json")
-   print("Eager kernel 数量:", prof.key_averages().count())
+   print("Eager kernel 数量:", len(prof.key_averages()))
    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
    # Compiled 模式
@@ -240,7 +240,7 @@ torch.profiler + torch.compile 高级分析
            compiled_model(x)
 
    prof.export_chrome_trace("compiled_trace.json")
-   print("\nCompiled kernel 数量:", prof.key_averages().count())
+   print("\nCompiled kernel 数量:", len(prof.key_averages()))
    print(prof.key_averages().table(sort_by="cuda_time_total", row_limit=10))
 
 将两个 ``trace.json`` 同时在 ``chrome://tracing`` 中打开（分别拖入），并排对比：

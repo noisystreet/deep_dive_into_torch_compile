@@ -22,7 +22,8 @@ PyTorch 提供了 ``torch.library`` API 来注册自定义算子：
 
    # 注册为 ATen 算子
    library.define(
-       "mylib::quadruple(Tensor x) -> Tensor",
+       "mylib::quadruple",
+       "(Tensor x) -> Tensor",
        tags=torch.Tag.pt2_compliant_tag,
    )
    library.impl("mylib::quadruple", my_quadruple_impl, "CompositeImplicitAutograd")
