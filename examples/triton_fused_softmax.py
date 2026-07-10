@@ -9,6 +9,8 @@ import torch
 import triton
 import triton.language as tl
 
+# --- docs: fused_softmax ---
+
 
 @triton.jit
 def fused_softmax_kernel(
@@ -59,6 +61,11 @@ def fused_softmax_kernel(
     y = x_exp / x_sum
 
     tl.store(output_ptr + row_start_out + col_offsets, y, mask=col_mask)
+
+
+# --- docs: end ---
+
+# --- docs: fused_softmax_2d ---
 
 
 @triton.jit
@@ -149,6 +156,8 @@ def fused_softmax(x: torch.Tensor, BLOCK_SIZE: int = 4096) -> torch.Tensor:
 
     return output.view(orig_shape)
 
+
+# --- docs: end ---
 
 if __name__ == "__main__":
     torch.manual_seed(42)

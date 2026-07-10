@@ -3,6 +3,7 @@
 展示如何将矩阵乘法、bias 加法和 ReLU 激活融合为单个 Triton kernel。
 融合避免了中间结果写回全局内存，减少了内存带宽消耗。
 """
+# --- docs: matmul_epilogue ---
 
 import torch
 import triton
@@ -136,6 +137,8 @@ def matmul_bias_relu(
     )
     return c
 
+
+# --- docs: end ---
 
 if __name__ == "__main__":
     torch.manual_seed(42)

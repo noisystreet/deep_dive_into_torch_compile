@@ -11,9 +11,28 @@ Hello World
 
 新建一个文件 ``hello_compile.py`` ，输入以下代码：
 
-.. literalinclude:: ../../examples/hello_compile.py
-   :language: python
-   :linenos:
+.. synced-code-start::
+
+   .. code-block:: python
+      :linenos:
+
+   import torch
+
+
+   def foo(x, y):
+       a = torch.sin(x)
+       b = torch.cos(y)
+       return a + b
+
+
+   compiled_foo = torch.compile(foo, backend="eager", fullgraph=True)
+
+   x = torch.randn(3, 3)
+   y = torch.randn(3, 3)
+   result = compiled_foo(x, y)
+   print(result)
+
+.. synced-code-end::
 
 运行它：
 

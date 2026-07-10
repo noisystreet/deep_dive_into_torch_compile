@@ -1,4 +1,5 @@
 """Hello torch.compile - 最小示例"""
+# --- docs: start ---
 
 import torch
 
@@ -15,3 +16,4 @@ x = torch.randn(3, 3)
 y = torch.randn(3, 3)
 result = compiled_foo(x, y)
 print(result)
+# --- docs: end ---

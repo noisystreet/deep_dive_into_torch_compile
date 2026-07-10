@@ -1,4 +1,5 @@
 """使用 Inductor 后端并查看生成的 Triton 代码"""
+# --- docs: start ---
 
 import torch
 
@@ -12,3 +13,4 @@ x = torch.randn(4).cuda()
 y = torch.randn(4).cuda()
 result = compiled_fn(x, y)
 print(result)
+# --- docs: end ---

@@ -1,4 +1,5 @@
 """演示 AOTAutograd 的前向/反向联合追踪"""
+# --- docs: start ---
 
 import torch
 from torch._functorch.aot_autograd import aot_function
@@ -23,3 +24,4 @@ result.backward()
 print(f"输入: x={x.data}, y={y.data}")
 print(f"输出: {result}")
 print(f"x.grad: {x.grad}")
+# --- docs: end ---

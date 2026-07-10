@@ -1,4 +1,5 @@
 """自定义 Triton kernel 示例"""
+# --- docs: add_kernel ---
 
 import torch
 import triton
@@ -23,6 +24,8 @@ def add(x: torch.Tensor, y: torch.Tensor) -> torch.Tensor:
     add_kernel[grid](x, y, output, n_elements, BLOCK_SIZE=1024)
     return output
 
+
+# --- docs: end ---
 
 x = torch.randn(1024, device="cuda")
 y = torch.randn(1024, device="cuda")

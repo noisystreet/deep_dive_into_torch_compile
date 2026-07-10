@@ -1,0 +1,36 @@
+[
+    {
+        "py": "examples/hello_compile.py",
+        "rst": "source/chapter_01_intro/02_hello_world.rst",
+        "label": "Hello World 示例"
+    },
+    {
+        "py": "examples/basic_fx_graph.py",
+        "rst": "source/chapter_02_overview/03_fx_graph_basics.rst",
+        "label": "FX Graph 基础"
+    },
+    {
+        "py": "examples/triton_kernel.py",
+        "rst": "source/chapter_07_triton/03_triton_kernel_examples.rst",
+        "section": "add_kernel",
+        "label": "Triton 逐元素相加"
+    },
+    {
+        "py": "examples/triton_matmul_epilogue.py",
+        "rst": "source/chapter_07_triton/03_triton_kernel_examples.rst",
+        "section": "matmul_epilogue",
+        "label": "Triton MatMul+Bias+ReLU"
+    },
+    {
+        "py": "examples/triton_fused_softmax.py",
+        "rst": "source/chapter_07_triton/03_triton_kernel_examples.rst",
+        "section": "fused_softmax",
+        "label": "Triton Fused Softmax (1D)"
+    },
+    {
+        "py": "examples/triton_fused_softmax.py",
+        "rst": "source/chapter_07_triton/03_triton_kernel_examples.rst",
+        "section": "fused_softmax_2d",
+        "label": "Triton Fused Softmax (2D)"
+    }
+]

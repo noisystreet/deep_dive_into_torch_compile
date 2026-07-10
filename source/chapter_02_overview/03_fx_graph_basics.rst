@@ -11,9 +11,25 @@ FX Graph 基础
 
 打开 Python，运行下面这段代码：
 
-.. literalinclude:: ../../examples/basic_fx_graph.py
-   :language: python
-   :linenos:
+.. synced-code-start::
+
+   .. code-block:: python
+      :linenos:
+
+   import torch
+
+
+   class MyModel(torch.nn.Module):
+       def forward(self, x):
+           return torch.sin(x) + torch.cos(x)
+
+
+   model = MyModel()
+   fx_model = torch.fx.symbolic_trace(model)
+   print(fx_model.graph)
+   fx_model.graph.print_tabular()
+
+.. synced-code-end::
 
 输出会是这样：
 
