@@ -1,0 +1,9 @@
+[tool.ruff]
+# 只做格式化，不检查 lint
+exclude = ["pytorch"]
+
+[tool.ruff.format]
+# 使用与 Black 兼容的格式
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"

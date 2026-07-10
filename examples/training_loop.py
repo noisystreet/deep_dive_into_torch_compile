@@ -34,8 +34,10 @@ from examples.benchmark_utils import timing_median, BenchmarkRunner
 # 模型定义
 # ============================================================
 
+
 class ResNetLikeBlock(nn.Module):
     """简化的 ResNet-like 模块，用于演示训练循环。"""
+
     def __init__(self, in_channels: int, out_channels: int, stride: int = 1):
         super().__init__()
         self.conv1 = nn.Conv2d(in_channels, out_channels, 3, stride, 1, bias=False)
@@ -67,6 +69,7 @@ class ResNetLikeBlock(nn.Module):
 
 class SmallResNet(nn.Module):
     """用于训练演示的小型 ResNet。"""
+
     def __init__(self, num_classes: int = 10):
         super().__init__()
         self.conv1 = nn.Conv2d(3, 64, 3, 1, 1, bias=False)
@@ -95,6 +98,7 @@ class SmallResNet(nn.Module):
 # 训练循环
 # ============================================================
 
+
 class CompiledTrainer:
     """封装了 compiled 训练循环的 Trainer。"""
 
@@ -120,9 +124,7 @@ class CompiledTrainer:
         )
         self.criterion = nn.CrossEntropyLoss()
         self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
-        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(
-            self.optimizer, T_max=10
-        )
+        self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10)
 
     def train_epoch(self, dataloader: DataLoader) -> float:
         """训练一个 epoch，返回平均 loss。"""
@@ -176,6 +178,7 @@ class CompiledTrainer:
 # 合成数据生成
 # ============================================================
 
+
 def create_synthetic_dataset(
     num_samples: int = 1024,
     image_size: int = 32,
@@ -193,6 +196,7 @@ def create_synthetic_dataset(
 # ============================================================
 # 梯度累积演示
 # ============================================================
+
 
 def train_with_gradient_accumulation(
     model: nn.Module,
@@ -234,15 +238,20 @@ def train_with_gradient_accumulation(
 # 主函数
 # ============================================================
 
+
 def main():
     parser = argparse.ArgumentParser(description="torch.compile 训练循环示例")
-    parser.add_argument("--mode", default="default",
-                        choices=["eager", "default", "reduce-overhead", "max-autotune"])
+    parser.add_argument(
+        "--mode",
+        default="default",
+        choices=["eager", "default", "reduce-overhead", "max-autotune"],
+    )
     parser.add_argument("--amp", action="store_true", help="启用混合精度训练")
     parser.add_argument("--epochs", type=int, default=5)
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--benchmark", action="store_true",
-                        help="运行模式对比 benchmark")
+    parser.add_argument(
+        "--benchmark", action="store_true", help="运行模式对比 benchmark"
+    )
     args = parser.parse_args()
 
     if args.benchmark:
@@ -304,8 +313,10 @@ def run_benchmark():
         print(f"  {mode:<20s} {elapsed:.2f} ms/epoch")
 
     # 计算加速比
-    eager_time = results[0][1] if results[0][0] == "eager" else next(
-        t for m, t in results if m == "eager"
+    eager_time = (
+        results[0][1]
+        if results[0][0] == "eager"
+        else next(t for m, t in results if m == "eager")
     )
     print("\n加速比:")
     for mode, elapsed in results:

@@ -1,4 +1,5 @@
 """Hello torch.compile - 最小示例"""
+
 import torch
 
 

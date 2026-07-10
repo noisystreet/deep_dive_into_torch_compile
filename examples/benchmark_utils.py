@@ -103,7 +103,11 @@ class BenchmarkResult:
     @property
     def speedup(self) -> Optional[float]:
         """相对于基线的加速比，仅在存在基线时可用。"""
-        return getattr(self, "_baseline_ms", None) / self.time_ms if hasattr(self, "_baseline_ms") else None
+        return (
+            getattr(self, "_baseline_ms", None) / self.time_ms
+            if hasattr(self, "_baseline_ms")
+            else None
+        )
 
     def __repr__(self) -> str:
         base = f"{self.label}: {self.time_ms:.2f} ms"
@@ -150,7 +154,8 @@ class BenchmarkRunner:
         if fn is None:
             fn = self.original_model
         return timing_median(
-            fn, *self.example_args,
+            fn,
+            *self.example_args,
             n_warmup=self.n_warmup,
             n_iter=self.n_iter,
             sync=self.sync,
@@ -239,9 +244,7 @@ def format_speedup_table(
     lines = [header, sep]
     for label, eager_t, comp_t in zip(labels, eager_times_ms, compiled_times_ms):
         speedup = eager_t / comp_t
-        lines.append(
-            f"{label:<25s} {eager_t:<15.2f} {comp_t:<15.2f} {speedup:<10.2f}x"
-        )
+        lines.append(f"{label:<25s} {eager_t:<15.2f} {comp_t:<15.2f} {speedup:<10.2f}x")
     return "\n".join(lines)
 
 
@@ -255,10 +258,14 @@ def torch_compile_info() -> str:
     lines.append(f"  inductor.max_fusion_size: {inductor_config.max_fusion_size}")
     lines.append(f"  inductor.triton.cudagraphs: {inductor_config.triton.cudagraphs}")
     lines.append(f"  dynamo.cache_size_limit: {dynamo_config.cache_size_limit}")
-    lines.append(f"  dynamo.assume_static_by_default: {dynamo_config.assume_static_by_default}")
+    lines.append(
+        f"  dynamo.assume_static_by_default: {dynamo_config.assume_static_by_default}"
+    )
 
     if hasattr(inductor_config, "autotune_in_subproc"):
-        lines.append(f"  inductor.autotune_in_subproc: {inductor_config.autotune_in_subproc}")
+        lines.append(
+            f"  inductor.autotune_in_subproc: {inductor_config.autotune_in_subproc}"
+        )
     return "\n".join(lines)
 
 

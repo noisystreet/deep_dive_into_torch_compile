@@ -1,5 +1,26 @@
 #!/bin/bash
-# Git Pre-Commit Hook: 在提交前自动检查 RST 文档语法
+# Git Pre-Commit Hook
+# 1. 自动格式化暂存区中的 Python 文件（ruff format）
+# 2. 自动检查 RST 文档语法
 # 通过 core.hooksPath .githooks 启用
 
-exec bash "$(git rev-parse --show-toplevel)/scripts/precommit-check.sh" --hook
+set -e
+
+PROJECT_ROOT="$(git rev-parse --show-toplevel)"
+
+# ---- Step 1: ruff format ----
+# 获取暂存区中修改的 .py 文件
+STAGED_PY=$(git diff --cached --name-only --diff-filter=ACM | grep '\.py$' || true)
+
+if [ -n "$STAGED_PY" ]; then
+    # 只格式化暂存区中的 Python 文件
+    echo "$STAGED_PY" | tr '\n' '\0' | xargs -0 -r ruff format --force-exclude 2>/dev/null || \
+        echo "$STAGED_PY" | tr '\n' '\0' | xargs -0 -r ruff format 2>/dev/null || true
+
+    # 重新将格式化的文件加入暂存区
+    # 注意：如果 ruff 修改了文件，需要重新 stage
+    echo "$STAGED_PY" | tr '\n' '\0' | xargs -0 -r git add
+fi
+
+# ---- Step 2: RST 文档检查 ----
+exec bash "$PROJECT_ROOT/scripts/precommit-check.sh" --hook

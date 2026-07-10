@@ -4,6 +4,7 @@
 所有中间计算（求最大值 → 指数 → 求和 → 归一化）都在寄存器中完成，
 避免写回全局内存。
 """
+
 import torch
 import triton
 import triton.language as tl
@@ -11,8 +12,10 @@ import triton.language as tl
 
 @triton.jit
 def fused_softmax_kernel(
-    x_ptr, output_ptr,
-    x_row_stride, output_row_stride,
+    x_ptr,
+    output_ptr,
+    x_row_stride,
+    output_row_stride,
     n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
@@ -57,9 +60,12 @@ def fused_softmax_kernel(
 
 @triton.jit
 def fused_softmax_kernel_2d(
-    x_ptr, output_ptr,
-    x_row_stride, output_row_stride,
-    n_rows, n_cols,
+    x_ptr,
+    output_ptr,
+    x_row_stride,
+    output_row_stride,
+    n_rows,
+    n_cols,
     BLOCK_SIZE: tl.constexpr,
 ):
     """二维网格 fused softmax kernel。
@@ -123,15 +129,15 @@ def fused_softmax(x: torch.Tensor, BLOCK_SIZE: int = 4096) -> torch.Tensor:
 
     output = torch.empty_like(x_2d)
 
-    assert BLOCK_SIZE >= n_cols, (
-        f"BLOCK_SIZE ({BLOCK_SIZE}) 必须 >= n_cols ({n_cols})"
-    )
+    assert BLOCK_SIZE >= n_cols, f"BLOCK_SIZE ({BLOCK_SIZE}) 必须 >= n_cols ({n_cols})"
 
     grid = (n_rows,)
 
     fused_softmax_kernel[grid](
-        x_2d, output,
-        x_2d.stride(0), output.stride(0),
+        x_2d,
+        output,
+        x_2d.stride(0),
+        output.stride(0),
         n_cols,
         BLOCK_SIZE=BLOCK_SIZE,
     )
@@ -156,8 +162,9 @@ if __name__ == "__main__":
 
     # 验证 softmax 性质：每行和为 1
     row_sums = y_triton.sum(dim=-1)
-    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), \
+    assert torch.allclose(row_sums, torch.ones_like(row_sums), atol=1e-5), (
         "Softmax 行和不为 1"
+    )
     print(f"  ✓ 行和校验通过 (max diff: {(row_sums - 1).abs().max().item():.6f})")
 
     # 测试 2: 大矩阵
@@ -185,12 +192,15 @@ if __name__ == "__main__":
     print("\n=== 测试 4: 数值稳定性测试 ===")
     x_stability = torch.tensor(
         [[1e5, 1e3, 1e1, -1e3, -1e5]],
-        device="cuda", dtype=torch.float32,
+        device="cuda",
+        dtype=torch.float32,
     )
     y_stability_triton = fused_softmax(x_stability)
     y_stability_ref = torch.softmax(x_stability, dim=-1)
 
-    torch.testing.assert_close(y_stability_triton, y_stability_ref, rtol=1e-5, atol=1e-5)
+    torch.testing.assert_close(
+        y_stability_triton, y_stability_ref, rtol=1e-5, atol=1e-5
+    )
     print(f"✓ 数值稳定性测试通过")
     print(f"  输入: [1e5, 1e3, 1e1, -1e3, -1e5]")
     print(f"  输出: {y_stability_triton[0].tolist()}")

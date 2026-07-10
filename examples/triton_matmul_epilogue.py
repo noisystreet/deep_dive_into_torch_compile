@@ -3,6 +3,7 @@
 展示如何将矩阵乘法、bias 加法和 ReLU 激活融合为单个 Triton kernel。
 融合避免了中间结果写回全局内存，减少了内存带宽消耗。
 """
+
 import torch
 import triton
 import triton.language as tl
@@ -10,11 +11,19 @@ import triton.language as tl
 
 @triton.jit
 def matmul_bias_relu_kernel(
-    a_ptr, b_ptr, bias_ptr, c_ptr,
-    M, N, K,
-    stride_am, stride_ak,
-    stride_bk, stride_bn,
-    stride_cm, stride_cn,
+    a_ptr,
+    b_ptr,
+    bias_ptr,
+    c_ptr,
+    M,
+    N,
+    K,
+    stride_am,
+    stride_ak,
+    stride_bk,
+    stride_bn,
+    stride_cm,
+    stride_cn,
     BLOCK_SIZE: tl.constexpr,
 ):
     """矩阵乘法 (A @ B) + Bias + ReLU 融合 kernel。
@@ -81,9 +90,7 @@ def matmul_bias_relu_kernel(
     acc = tl.where(acc > 0, acc, 0.0)
 
     # 存储最终结果
-    c_ptrs = c_ptr + (
-        m_offsets[:, None] * stride_cm + n_offsets[None, :] * stride_cn
-    )
+    c_ptrs = c_ptr + (m_offsets[:, None] * stride_cm + n_offsets[None, :] * stride_cn)
     tl.store(c_ptrs, acc, mask=mask_m[:, None] & mask_n[None, :])
 
 
@@ -118,11 +125,19 @@ def matmul_bias_relu(
     )
 
     matmul_bias_relu_kernel[grid](
-        a, b, bias, c,
-        M, N, K,
-        a.stride(0), a.stride(1),
-        b.stride(0), b.stride(1),
-        c.stride(0), c.stride(1),
+        a,
+        b,
+        bias,
+        c,
+        M,
+        N,
+        K,
+        a.stride(0),
+        a.stride(1),
+        b.stride(0),
+        b.stride(1),
+        c.stride(0),
+        c.stride(1),
         BLOCK_SIZE=BLOCK_SIZE,
     )
     return c
