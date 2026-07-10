@@ -123,7 +123,7 @@ class CompiledTrainer:
             self.model.parameters(), lr=lr, weight_decay=weight_decay
         )
         self.criterion = nn.CrossEntropyLoss()
-        self.scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+        self.scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
         self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10)
 
     def train_epoch(self, dataloader: DataLoader) -> float:
@@ -136,7 +136,7 @@ class CompiledTrainer:
             x, y = x.cuda(), y.cuda()
 
             # 前向传播 — 使用 AMP 上下文
-            with torch.cuda.amp.autocast(enabled=self.use_amp):
+            with torch.amp.autocast("cuda", enabled=self.use_amp):
                 output = self.model(x)
                 loss = self.criterion(output, y)
 
@@ -162,7 +162,7 @@ class CompiledTrainer:
 
         for x, y in dataloader:
             x, y = x.cuda(), y.cuda()
-            with torch.cuda.amp.autocast(enabled=self.use_amp):
+            with torch.amp.autocast("cuda", enabled=self.use_amp):
                 output = self.model(x)
                 loss = nn.CrossEntropyLoss()(output, y)
 
@@ -213,7 +213,7 @@ def train_with_gradient_accumulation(
     """
     compiled_model = torch.compile(model, mode=compile_mode).cuda()
     optimizer = optim.SGD(compiled_model.parameters(), lr=0.01, momentum=0.9)
-    scaler = torch.cuda.amp.GradScaler(enabled=use_amp)
+    scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
     criterion = nn.CrossEntropyLoss()
 
     optimizer.zero_grad()
@@ -221,7 +221,7 @@ def train_with_gradient_accumulation(
     for i, (x, y) in enumerate(dataloader):
         x, y = x.cuda(), y.cuda()
 
-        with torch.cuda.amp.autocast(enabled=use_amp):
+        with torch.amp.autocast("cuda", enabled=use_amp):
             output = compiled_model(x)
             # 除以 accumulation_steps 使得最终梯度等价于更大的 batch
             loss = criterion(output, y) / accumulation_steps

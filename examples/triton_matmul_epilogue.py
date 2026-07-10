@@ -98,19 +98,13 @@ def matmul_bias_relu(
     a: torch.Tensor,
     b: torch.Tensor,
     bias: torch.Tensor,
-    BLOCK_SIZE: int = 128,
+    BLOCK_SIZE: int = 64,
 ) -> torch.Tensor:
-    """包装函数：执行 MatMul + Bias + ReLU。
+    """包装函数: 执行 MatMul + Bias + ReLU。
 
-    参数:
-        a: 输入矩阵 A，形状 (M, K)
-        b: 输入矩阵 B，形状 (K, N)
-        bias: bias 向量，形状 (N,)
-        BLOCK_SIZE: Triton kernel 的分块大小
-
-    返回:
-        C = ReLU(A @ B + bias)，形状 (M, N)
+    BLOCK_SIZE 默认 64 以避免 shared memory 超限(大部分 GPU 限制 96KB)。
     """
+
     assert a.is_cuda and b.is_cuda and bias.is_cuda
     M, K = a.shape
     _, N = b.shape

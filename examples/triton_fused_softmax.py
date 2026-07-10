@@ -43,14 +43,17 @@ def fused_softmax_kernel(
 
     # 数值稳定的 softmax：
     # 1. 减去最大值，避免 exp(大正数) 溢出
-    x_max = tl.max(x, axis=0)
+    # 用 -1e38 替换 masked 元素，避免默认值 0 污染 max
+    x_masked = tl.where(col_mask, x, -1e38)
+    x_max = tl.max(x_masked, axis=0)
     x_sub = x - x_max
 
     # 2. 计算指数
     x_exp = tl.exp(x_sub)
 
-    # 3. 求和
-    x_sum = tl.sum(x_exp, axis=0)
+    # 3. 求和（masked 元素贡献 0）
+    x_exp_masked = tl.where(col_mask, x_exp, 0.0)
+    x_sum = tl.sum(x_exp_masked, axis=0)
 
     # 4. 归一化
     y = x_exp / x_sum
@@ -97,9 +100,11 @@ def fused_softmax_kernel_2d(
     x = tl.load(x_ptr + row_start_x + offsets, mask=mask)
 
     # Softmax 计算（单 block 覆盖整行）
-    x_max = tl.max(x, axis=0)
+    x_masked = tl.where(mask, x, -1e38)
+    x_max = tl.max(x_masked, axis=0)
     x_exp = tl.exp(x - x_max)
-    x_sum = tl.sum(x_exp, axis=0)
+    x_exp_masked = tl.where(mask, x_exp, 0.0)
+    x_sum = tl.sum(x_exp_masked, axis=0)
 
     tl.store(
         output_ptr + row_start_out + offsets,
