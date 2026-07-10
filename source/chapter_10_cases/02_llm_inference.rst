@@ -52,7 +52,7 @@
    start = time.time()
    generate(compiled_model, inputs.input_ids)
    torch.cuda.synchronize()
-   print(f"Compiled 生成时间: {time.time() - start:.2f}s)
+   print(f"Compiled 生成时间: {time.time() - start:.2f}s")
 
 关键优化点
 ==============

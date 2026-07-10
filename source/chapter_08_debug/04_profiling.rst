@@ -124,7 +124,7 @@ Inductor 在 ``max-autotune`` 模式下会自动对 kernel 做基准测试。你
    end.record()
    
    torch.cuda.synchronize()
-   print(f"平均时间: {start.elapsed_time(end) / 100:.3f} ms)
+   print(f"平均时间: {start.elapsed_time(end) / 100:.3f} ms")
 
 这种手动 benchmark 比 profiler 更精确，因为 profiler 本身有开销。
 

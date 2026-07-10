@@ -742,7 +742,7 @@ Pattern Matcher 失败
 
 Inductor 使用 Pattern Matcher 将多个 ATen 操作匹配为特定的融合模式。当匹配失败时，fusion 效果会下降。
 
-.. code-block:: python
+.. code-block:: bash
 
    # 查看 Pattern Matcher 的匹配日志
    TORCH_LOGS="+pattern_matcher" python train.py
