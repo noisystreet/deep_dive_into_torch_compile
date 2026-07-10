@@ -32,5 +32,27 @@
         "rst": "source/chapter_07_triton/03_triton_kernel_examples.rst",
         "section": "fused_softmax_2d",
         "label": "Triton Fused Softmax (2D)"
+    },
+    {
+        "py": "examples/dynamo_capture.py",
+        "rst": "source/chapter_03_dynamo/06_graph_break.rst",
+        "label": "Dynamo 图捕获与 Graph Break"
+    },
+    {
+        "py": "examples/inductor_backend.py",
+        "rst": "source/chapter_01_intro/03_basic_usage.rst",
+        "section": "inductor_backend",
+        "label": "Inductor 后端示例"
+    },
+    {
+        "py": "examples/aotautograd_demo.py",
+        "rst": "source/chapter_04_aotautograd/01_joint_forward_backward.rst",
+        "label": "AOTAutograd 联合求导示例"
+    },
+    {
+        "py": "examples/training_loop.py",
+        "rst": "source/chapter_10_cases/03_training_workflow.rst",
+        "section": "trainer",
+        "label": "CompiledTrainer 训练循环"
     }
 ]

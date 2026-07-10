@@ -180,6 +180,34 @@ fullgraph=True 的用途
 
 这在调试时非常有用——如果希望确认某个函数能否被完整编译为单个 kernel，加上 ``fullgraph=True`` ，如果能运行不报错，就说明它是"完全可编译"的。
 
+动手验证：控制流导致的 Graph Break
+============================================
+
+下面这个例子展示了控制流（ ``if`` 语句）如何触发 graph break——当 ``x.sum() > 0`` 这个条件依赖于 Tensor 的运行时值时，Dynamo 无法在编译期确定走哪个分支，因此只能在此处断图：
+
+.. synced-code-start::
+
+   .. code-block:: python
+      :linenos:
+
+   import torch
+
+
+   def complex_function(x):
+       x = torch.sin(x)
+       if x.sum() > 0:
+           x = torch.cos(x)
+       else:
+           x = torch.tanh(x)
+       return x
+
+
+   compiled_fn = torch.compile(complex_function, backend="eager", fullgraph=False)
+   x = torch.randn(4)
+   print(compiled_fn(x))
+
+.. synced-code-end::
+
 小结
 ======
 

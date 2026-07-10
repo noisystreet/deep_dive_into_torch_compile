@@ -99,6 +99,9 @@ class SmallResNet(nn.Module):
 # ============================================================
 
 
+# --- docs: trainer ---
+
+
 class CompiledTrainer:
     """封装了 compiled 训练循环的 Trainer。"""
 
@@ -172,6 +175,9 @@ class CompiledTrainer:
             correct += predicted.eq(y).sum().item()
 
         return total_loss / len(dataloader), correct / total
+
+
+# --- docs: end ---
 
 
 # ============================================================

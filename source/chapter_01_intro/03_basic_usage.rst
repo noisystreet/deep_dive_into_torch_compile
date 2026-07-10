@@ -105,6 +105,28 @@ PyTorch 内置了多个后端：
 
 自定义后端的注册接口会在第 9 章介绍。
 
+以下是一个完整的 ``backend="inductor"`` 使用示例——在 CUDA 张量上执行 ``torch.sin(x) + torch.cos(y)``，Inductor 会将其编译为 Triton kernel：
+
+.. synced-code-start:: inductor_backend
+
+   .. code-block:: python
+      :linenos:
+
+   import torch
+
+
+   def fn(x, y):
+       return torch.sin(x) + torch.cos(y)
+
+
+   compiled_fn = torch.compile(fn, backend="inductor")
+   x = torch.randn(4).cuda()
+   y = torch.randn(4).cuda()
+   result = compiled_fn(x, y)
+   print(result)
+
+.. synced-code-end::
+
 mode：预设优化策略
 ------------------------
 
