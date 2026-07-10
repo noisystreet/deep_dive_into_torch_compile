@@ -1,7 +1,8 @@
 #!/bin/bash
 # Git Pre-Commit Hook
 # 1. 自动格式化暂存区中的 Python 文件（ruff format）
-# 2. 自动检查 RST 文档语法
+# 2. 自动同步 examples/ 代码到 RST 文档（sync_examples.py）
+# 3. 自动检查 RST 文档语法
 # 通过 core.hooksPath .githooks 启用
 
 set -e
@@ -22,5 +23,20 @@ if [ -n "$STAGED_PY" ]; then
     echo "$STAGED_PY" | tr '\n' '\0' | xargs -0 -r git add
 fi
 
-# ---- Step 2: RST 文档检查 ----
+# ---- Step 2: 同步代码示例到文档 ----
+# 当暂存区中有 .py 文件修改时，自动同步到 RST 文档
+if [ -n "$STAGED_PY" ]; then
+    echo "=== 同步 examples/ 代码到 RST 文档 ==="
+    python3 "$PROJECT_ROOT/scripts/sync_examples.py"
+
+    # 如果同步脚本修改了 RST 文件，需要重新加入暂存区
+    MODIFIED_RST=$(git diff --name-only --diff-filter=M | grep '\.rst$' || true)
+    if [ -n "$MODIFIED_RST" ]; then
+        echo "$MODIFIED_RST" | tr '\n' '\0' | xargs -0 -r git add
+        echo "已更新并暂存 RST 文档:"
+        echo "$MODIFIED_RST" | sed 's/^/  - /'
+    fi
+fi
+
+# ---- Step 3: RST 文档检查 ----
 exec bash "$PROJECT_ROOT/scripts/precommit-check.sh" --hook
