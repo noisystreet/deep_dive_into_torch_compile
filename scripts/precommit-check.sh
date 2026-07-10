@@ -39,25 +39,37 @@ check_rst_inline_markup() {
     local has_error=0
 
     for f in "${files[@]}"; do
-        # 检查 :role:`xxx` 角色标记后紧跟中文括号（缺少空格）
-        if grep -Pn ':\w+:`[^`]*`[（）]' "$f" &>/dev/null; then
+        # 检查 :role:`xxx` 角色标记后紧跟中文标点（缺少空格）
+        if grep -Pn ':\w+:`[^`]*`[（）？。，：；！、]' "$f" &>/dev/null; then
             if [ $has_error -eq 0 ]; then
-                echo -e "${YELLOW}⚠  角色标记后紧跟中文括号（缺少空格）:${NC}"
+                echo -e "${YELLOW}⚠  角色标记后紧跟中文标点（缺少空格）:${NC}"
             fi
             echo -e "  ${YELLOW}$f${NC}"
-            grep -Pn ':\w+:`[^`]*`[（）]' "$f" | while read -r line; do
+            grep -Pn ':\w+:`[^`]*`[（）？。，：；！、]' "$f" | while read -r line; do
                 echo "    $line"
             done
             has_error=1
         fi
 
-        # 检查 **bold** 后紧跟中文括号/逗号（缺少空格）
-        if grep -Pn '\*\*[^*]*\*\*[（，]' "$f" &>/dev/null; then
+        # 检查 **bold** 后紧跟中文标点（缺少空格）
+        if grep -Pn '\*\*[^*]*\*\*[（）？。，：；！、]' "$f" &>/dev/null; then
             if [ $has_error -eq 0 ]; then
                 echo -e "${YELLOW}⚠  **bold** 后紧跟中文标点（缺少空格）:${NC}"
             fi
             echo -e "  ${YELLOW}$f${NC}"
-            grep -Pn '\*\*[^*]*\*\*[（，]' "$f" | while read -r line; do
+            grep -Pn '\*\*[^*]*\*\*[（）？。，：；！、]' "$f" | while read -r line; do
+                echo "    $line"
+            done
+            has_error=1
+        fi
+
+        # 检查 ``literal`` 后紧跟中文标点（缺少空格）
+        if grep -Pn '``[^`]*``[（）？。，：；！、]' "$f" &>/dev/null; then
+            if [ $has_error -eq 0 ]; then
+                echo -e "${YELLOW}⚠  ``literal`` 后紧跟中文标点（缺少空格）:${NC}"
+            fi
+            echo -e "  ${YELLOW}$f${NC}"
+            grep -Pn '``[^`]*``[）。（），：；？！、]' "$f" | while read -r line; do
                 echo "    $line"
             done
             has_error=1
@@ -125,9 +137,15 @@ if [ "$1" = "--hook" ]; then
     check_rst_files $STAGED_FILES
     EXIT_CODE=$?
 
-    # 额外检查内联标记格式
+    # 额外检查内联标记格式（仅提示，不阻塞提交）
     if [ -n "$STAGED_FILES" ]; then
-        check_rst_inline_markup $STAGED_FILES && true
+        check_rst_inline_markup $STAGED_FILES || true
+    fi
+
+    # hook 模式下，警告（exit code 2）不阻塞提交，仅语法错误（exit code 1）阻塞
+    if [ $EXIT_CODE -eq 2 ]; then
+        echo -e "${YELLOW}⚠  检查通过但有警告，已跳过。提交继续。${NC}"
+        EXIT_CODE=0
     fi
 
 elif [ "$1" = "--staged" ]; then

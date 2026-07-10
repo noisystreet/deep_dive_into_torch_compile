@@ -6,9 +6,9 @@
 
 本书所有示例基于以下环境开发和测试：
 
-- **Python** 3.13
-- **PyTorch** v2.12.1
-- **CUDA** 12.x（GPU 相关章节）
+- **Python**3.13
+- **PyTorch**v2.12.1
+- **CUDA**12.x（GPU 相关章节）
 - **Linux x86_64**
 
 安装 PyTorch v2.12.1
@@ -66,7 +66,7 @@
 调试与日志
 ----------------
 
-- **TORCH_LOGS**：最常用的调试工具。通过环境变量控制日志输出：
+- **TORCH_LOGS** ：最常用的调试工具。通过环境变量控制日志输出：
 
   .. code-block:: bash
 
@@ -83,7 +83,7 @@
 
   关于日志系统的完整说明，见第 8 章。
 
-- **torch.compiler.debug**：生成 HTML 格式的编译调试报告：
+- **torch.compiler.debug** ：生成 HTML 格式的编译调试报告：
 
   .. code-block:: python
 
@@ -95,7 +95,7 @@
 性能分析
 --------------
 
-- **torch.cuda.Event**：手动基准测试（第 1.4 节使用）：
+- **torch.cuda.Event** ：手动基准测试（第 1.4 节使用）：
 
   .. code-block:: python
 
@@ -107,7 +107,7 @@
      torch.cuda.synchronize()
      print(start.elapsed_time(end))
 
-- **PyTorch Profiler**：详细的 kernel 级别性能分析：
+- **PyTorch Profiler** ：详细的 kernel 级别性能分析：
 
   .. code-block:: python
 
@@ -115,17 +115,17 @@
          compiled_fn(x, y)
      print(prof.key_averages().table(sort_by="cuda_time_total"))
 
-- **torchinp**：社区工具，用于分析 torch.compile 的编译时间和内存开销。
+- **torchinp** ：社区工具，用于分析 torch.compile 的编译时间和内存开销。
 
 缓存管理
 --------------
 
-- **torch.compiler.reset()**：清空内存中的编译缓存
-- **TORCHINDUCTOR_CACHE_DIR**：持久化编译缓存到磁盘
+- **torch.compiler.reset()** ：清空内存中的编译缓存
+- **TORCHINDUCTOR_CACHE_DIR** ：持久化编译缓存到磁盘
 
   .. code-block:: bash
 
      TORCHINDUCTOR_CACHE_DIR=/tmp/compile_cache python train.py
      # 第二次运行复用缓存，跳过编译
 
-- **TORCHINDUCTOR_FORCE_DISABLE_CACHES=1**：禁用缓存（开发调试时有用）
+- **TORCHINDUCTOR_FORCE_DISABLE_CACHES=1** ：禁用缓存（开发调试时有用）

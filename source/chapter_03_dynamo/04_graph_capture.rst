@@ -6,17 +6,17 @@
 
 .. note::
 
-   **Dynamo 的提交流中，超过 12% 是 Revert。**
-   在 Dynamo 的 6,439 次历史提交中，revert 占了 815 次（约 12.7%）。这反映了团队的一个开发哲学：**先 merge，错了再 revert**，而不是花很长时间逐行 review。在高速迭代的编译器项目中，这比"完美 review 再 merge"更高效——因为有些编译器的 bug 只在特定模型、特定 GPU 上才会出现，review 阶段很难发现。PyTorch 的 CI 虽然严格，但不会覆盖所有模型。所以团队选择用"revert 安全网"代替"review 放大镜"。
+   **Dynamo 的提交流中，超过 12% 是 Revert。 **
+   在 Dynamo 的 6,439 次历史提交中，revert 占了 815 次（约 12.7%）。这反映了团队的一个开发哲学：** 先 merge，错了再 revert**，而不是花很长时间逐行 review。在高速迭代的编译器项目中，这比"完美 review 再 merge"更高效——因为有些编译器的 bug 只在特定模型、特定 GPU 上才会出现，review 阶段很难发现。PyTorch 的 CI 虽然严格，但不会覆盖所有模型。所以团队选择用"revert 安全网"代替"review 放大镜"。
 
-第 3.1 节从设计目标出发，说明了 FakeTensor、Guard、Graph Break 如何组成一条链。第 3.3 节讲了 **InstructionTranslator 如何驱动字节码、如何通过 ``call_function`` 派发**。本节站在 **值语义** 一侧：VariableTracker、Proxy、FakeTensor 如何把一次派发变成 FX Graph 里的节点。
+第 3.1 节从设计目标出发，说明了 FakeTensor、Guard、Graph Break 如何组成一条链。第 3.3 节讲了 **InstructionTranslator 如何驱动字节码、如何通过 ``call_function`` 派发** 。本节站在 **值语义** 一侧：VariableTracker、Proxy、FakeTensor 如何把一次派发变成 FX Graph 里的节点。
 
 这一节是第 3 章的核心之一。我们追踪 ``torch.sin(x)`` 在 ``call_function`` 进入 ``BuiltinVariable`` 之后，如何创建 Proxy、插入 ``call_function`` 节点。
 
 VariableTracker：一切皆变量
 ===============================
 
-在 Dynamo 的符号执行环境中，**每个 Python 对象都被包装成一个 ``VariableTracker``**。无论是 Tensor、int、函数、还是 Module，它们在 InstructionTranslator 的模拟栈上都是以 ``VariableTracker`` 子类的形式存在的。
+在 Dynamo 的符号执行环境中， **每个 Python 对象都被包装成一个 ``VariableTracker``** 。无论是 Tensor、int、函数、还是 Module，它们在 InstructionTranslator 的模拟栈上都是以 ``VariableTracker`` 子类的形式存在的。
 
 .. code-block:: text
 
@@ -30,7 +30,7 @@ VariableTracker：一切皆变量
    torch.dtype              ConstantVariable
    ...                      ...
 
-这个抽象层的作用是：InstructionTranslator 不需要区分"这是一个 Tensor 还是一个 int"——它看到的所有值都是 ``VariableTracker``，只需要调用统一的接口（如 ``call_function``、``var_getattr``），具体的行为由各个子类实现。
+这个抽象层的作用是：InstructionTranslator 不需要区分"这是一个 Tensor 还是一个 int"——它看到的所有值都是 ``VariableTracker`` ，只需要调用统一的接口（如 ``call_function`` 、 ``var_getattr`` ），具体的行为由各个子类实现。
 
 核心实现位于 ``pytorch/torch/_dynamo/variables/`` 目录：
 
@@ -48,7 +48,7 @@ VariableTracker：一切皆变量
 追踪一条 ``torch.sin(x)``
 ==============================
 
-第 3.3 节已说明 ``CALL_FUNCTION`` handler 会调用 ``self.call_function(fn, args, {})``。下面从 **VariableTracker 派发** 侧，补全 ``torch.sin(x)`` 如何变成 FX 节点（字节码逐步弹栈过程见第 3.3 节分发表）。
+第 3.3 节已说明 ``CALL_FUNCTION`` handler 会调用 ``self.call_function(fn, args, {})`` 。下面从 **VariableTracker 派发** 侧，补全 ``torch.sin(x)`` 如何变成 FX 节点（字节码逐步弹栈过程见第 3.3 节分发表）。
 
 .. code-block:: text
 
@@ -73,7 +73,7 @@ VariableTracker：一切皆变量
 创建 FX 节点：SubgraphTracer 的角色
 ==========================================
 
-核心的 FX 节点创建发生在 ``output_graph.py`` 中的 ``SubgraphTracer`` 类，它继承自 ``torch.fx.Tracer``：
+核心的 FX 节点创建发生在 ``output_graph.py`` 中的 ``SubgraphTracer`` 类，它继承自 ``torch.fx.Tracer`` ：
 
 .. code-block:: python
    :caption: pytorch/torch/_dynamo/output_graph.py（简化示意）
@@ -117,14 +117,14 @@ VariableTracker：一切皆变量
 
 Proxy 的作用很重要：它既是一个 FX 节点（在图中有位置），又是一个"假张量"（可以像 Tensor 一样传递）。后续的操作（比如将 sin 的结果传给 add）通过引用 proxy 而不是引用具体数值，这样就自动建立了图的数据依赖关系。
 
-**Proxy 是连接符号执行和 FX Graph 的桥梁。** InstructionTranslator 看到的是 ``TensorVariable(proxy)``，而 ``proxy`` 内部持有对 FX Graph 中某个节点的引用。
+**Proxy 是连接符号执行和 FX Graph 的桥梁。 **InstructionTranslator 看到的是 ``TensorVariable(proxy)`` ，而 ``proxy`` 内部持有对 FX Graph 中某个节点的引用。
 
 FakeTensor：符号执行中的"假"张量
 =========================================
 
 这里有一个关键问题：当 Dynamo 执行 ``torch.sin(x)`` 时，图捕获是成功了，但 ``torch.sin`` 的实际计算并没有发生。那如果后续代码依赖 ``x.sin()`` 的结果（比如检查它的形状、dtype 等），Dynamo 怎么处理？
 
-答案是 **FakeTensor**。Dynamo 在开始符号执行之前，会将所有输入张量替换为 ``FakeTensor``。FakeTensor 具有真实张量的所有元数据（形状、dtype、device），但不包含实际数据。
+答案是**FakeTensor** 。Dynamo 在开始符号执行之前，会将所有输入张量替换为 ``FakeTensor`` 。FakeTensor 具有真实张量的所有元数据（形状、dtype、device），但不包含实际数据。
 
 .. code-block:: python
    :caption: FakeTensor 的简化示意
@@ -161,12 +161,12 @@ Proxy 和 FakeTensor 的关系
        fake_tensor: FakeTensor(shape=(3,3), dtype=float32)  # 元数据
    }
 
-当 Dynamo 后续需要访问这个张量的形状时（如 ``x.shape``），它使用 FakeTensor。当它需要引用这个张量在图中的位置时（如作为 ``torch.sin`` 的参数），它使用 Proxy。
+当 Dynamo 后续需要访问这个张量的形状时（如 ``x.shape`` ），它使用 FakeTensor。当它需要引用这个张量在图中的位置时（如作为 ``torch.sin`` 的参数），它使用 Proxy。
 
 OutputGraph：图的最终构建
 ==================================
 
-符号执行完成后，``InstructionTranslator.output`` 中包含了一个 ``OutputGraph`` 对象，它持有最终的 FX Graph：
+符号执行完成后， ``InstructionTranslator.output`` 中包含了一个 ``OutputGraph`` 对象，它持有最终的 FX Graph：
 
 .. code-block:: python
    :caption: pytorch/torch/_dynamo/output_graph.py 关键类
@@ -187,8 +187,8 @@ OutputGraph：图的最终构建
 
 ``OutputGraph`` 在符号执行过程中积累了两样东西：
 
-1. **FX Graph**：通过 ``tracer.create_proxy`` 调用逐步构建
-2. **Guards**：每次对张量形状/属性做检查时，InstructionTranslator 会调用 ``output.add_guard`` 记录检查条件
+1.**FX Graph** ：通过 ``tracer.create_proxy`` 调用逐步构建
+2.**Guards** ：每次对张量形状/属性做检查时，InstructionTranslator 会调用 ``output.add_guard`` 记录检查条件
 
 这两样东西最终被一起传给后端编译器。
 
@@ -197,10 +197,10 @@ OutputGraph：图的最终构建
 
 这一节我们追踪了 ``torch.sin(x)`` 从字节码到 FX Graph 节点的完整路径：
 
-1. **VariableTracker** 统一包装层：所有 Python 值被包装为同态对象
-2. **SubgraphTracer** / **Proxy**：通过 ``fx.Tracer.create_proxy`` 在图中插入节点
-3. **FakeTensor**：提供元数据但不执行实际计算
-4. **OutputGraph**：持有最终的 FX Graph 和累积的 Guards
+1.**VariableTracker** 统一包装层：所有 Python 值被包装为同态对象
+2.**SubgraphTracer**/**Proxy** ：通过 ``fx.Tracer.create_proxy`` 在图中插入节点
+3.**FakeTensor** ：提供元数据但不执行实际计算
+4.**OutputGraph** ：持有最终的 FX Graph 和累积的 Guards
 
 这些机制协同工作，使得 Dynamo 可以在完全不修改用户代码的前提下，将任意 Python 函数的 Tensor 操作部分提取为一张可编译的计算图。
 

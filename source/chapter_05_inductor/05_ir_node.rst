@@ -65,7 +65,7 @@ Inductor 中的 IR 节点按照功能和抽象层级形成一个分层结构：
 三种主要的 IR 类型
 ========================
 
-**Pointwise**：描述逐元素操作。输入和输出的形状相同。``inner_fn`` 对每个索引独立产生一个值。
+**Pointwise** ：描述逐元素操作。输入和输出的形状相同。 ``inner_fn`` 对每个索引独立产生一个值。
 
 .. code-block:: text
 
@@ -76,7 +76,7 @@ Inductor 中的 IR 节点按照功能和抽象层级形成一个分层结构：
        # 对 (i, j) 范围内的每个元素调用 sin
    )
 
-**Reduction**：描述归约操作。输出形状小于输入形状。除了 ``inner_fn`` 外，还包含归约类型（sum、max、min 等）。
+**Reduction** ：描述归约操作。输出形状小于输入形状。除了 ``inner_fn`` 外，还包含归约类型（sum、max、min 等）。
 
 .. code-block:: text
 
@@ -89,7 +89,7 @@ Inductor 中的 IR 节点按照功能和抽象层级形成一个分层结构：
        # 沿着 reduction_dim 求和
    )
 
-**TemplateBuffer**：描述预定义的 kernel 模板，常用于矩阵乘法和卷积。这些操作有高度优化的实现（如 cuBLAS、Triton GEMM），不适合用 pointwise 或 reduction 逐元素生成代码。
+**TemplateBuffer** ：描述预定义的 kernel 模板，常用于矩阵乘法和卷积。这些操作有高度优化的实现（如 cuBLAS、Triton GEMM），不适合用 pointwise 或 reduction 逐元素生成代码。
 
 .. code-block:: text
 
@@ -104,9 +104,9 @@ Inductor 中的 IR 节点按照功能和抽象层级形成一个分层结构：
 Lowering 映射表
 ======================
 
-每一个 FX 操作（如 ``torch.sin``、``torch.add``、``torch.mm``）都有对应的 lowering 函数，通过 ``register_lowering`` 装饰器注册到 ``lowerings`` 字典中。
+每一个 FX 操作（如 ``torch.sin`` 、 ``torch.add`` 、 ``torch.mm`` ）都有对应的 lowering 函数，通过 ``register_lowering`` 装饰器注册到 ``lowerings`` 字典中。
 
-``register_lowering`` 定义在 ``pytorch/torch/_inductor/lowering.py``：
+``register_lowering`` 定义在 ``pytorch/torch/_inductor/lowering.py`` ：
 
 .. code-block:: python
    :caption: pytorch/torch/_inductor/lowering.py（简化示意）
@@ -142,12 +142,12 @@ Lowering 映射表
        # 生成 TemplateBuffer（使用 GEMM 模板）
        ...
 
-``broadcast`` 参数告诉 lowering 框架自动处理广播语义——当 ``x`` 和 ``y`` 形状不同时，自动插入广播逻辑。``type_promotion_kind`` 参数控制类型提升规则。
+``broadcast`` 参数告诉 lowering 框架自动处理广播语义——当 ``x`` 和 ``y`` 形状不同时，自动插入广播逻辑。 ``type_promotion_kind`` 参数控制类型提升规则。
 
 ops 原语
 =============
 
-在 ``inner_fn`` 内部，计算通过一组原语操作（``ops.*``）来描述。这些原语是 IR 层面到具体硬件指令的桥梁：
+在 ``inner_fn`` 内部，计算通过一组原语操作（ ``ops.*`` ）来描述。这些原语是 IR 层面到具体硬件指令的桥梁：
 
 .. list-table::
    :header-rows: 1
@@ -178,8 +178,8 @@ IR 的设计思想与同类对比见 :ref:`ir-design-philosophy`。
 
 这一节介绍了 Inductor 的核心中间表示 IRNode：
 
-- **三种主要 IR 类型** ：``Pointwise`` （逐元素）、``Reduction`` （归约）、``TemplateBuffer`` （预定义模板）
-- **Lowering 映射表**：通过 ``register_lowering`` 装饰器将 FX 操作注册到 IR 构造函数
-- **ops 原语**：IR 层面的计算描述，在 codegen 时翻译为具体硬件代码
+- **三种主要 IR 类型 ** ： ``Pointwise`` （逐元素）、 ``Reduction`` （归约）、 ``TemplateBuffer`` （预定义模板）
+- **Lowering 映射表 ** ：通过 ``register_lowering`` 装饰器将 FX 操作注册到 IR 构造函数
+- **ops 原语 ** ：IR 层面的计算描述，在 codegen 时翻译为具体硬件代码
 - **inner_fn** ：IR 节点的核心——描述「如何在索引下计算值」
-- **设计思想**：内存中心、Lazy Fusion、与 FX/XLA/MLIR 等的定位对比见 :ref:`ir-design-philosophy`
+- **设计思想** ：内存中心、Lazy Fusion、与 FX/XLA/MLIR 等的定位对比见 :ref:`ir-design-philosophy`

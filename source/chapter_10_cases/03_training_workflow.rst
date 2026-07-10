@@ -39,7 +39,7 @@
            optimizer.step()
            optimizer.zero_grad()
 
-这里只有模型的 ``forward`` 和 ``backward`` 被编译。损失函数通常很简单（如 ``cross_entropy``），编译它的收益不大，反而可能引入不必要的编译开销。
+这里只有模型的 ``forward`` 和 ``backward`` 被编译。损失函数通常很简单（如 ``cross_entropy`` ），编译它的收益不大，反而可能引入不必要的编译开销。
 
 端到端编译
 ==============
@@ -149,7 +149,7 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
            x = self.layer3(x)
            return x
 
-检查点和 torch.compile 配合使用时需要注意：``checkpoint`` 内部的函数也会被编译。如果检查点内部的函数很复杂，编译开销可能超过重计算节省的显存。可以通过 ``torch.compiler.disable`` 禁用检查点内部的编译：
+检查点和 torch.compile 配合使用时需要注意： ``checkpoint`` 内部的函数也会被编译。如果检查点内部的函数很复杂，编译开销可能超过重计算节省的显存。可以通过 ``torch.compiler.disable`` 禁用检查点内部的编译：
 
 .. code-block:: python
 
@@ -180,9 +180,9 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
 常见问题与调试
 ==================
 
-**"RuntimeError: backward() was called after optimizer.step()"**。如果编译模型在 ``backward()`` 上出错，检查是否在 ``backward()`` 之前调用了 ``optimizer.step()``。这在编译模式下更常见，因为编译后的图可能改变了操作顺序。
+**"RuntimeError: backward() was called after optimizer.step()"** 。如果编译模型在 ``backward()`` 上出错，检查是否在 ``backward()`` 之前调用了 ``optimizer.step()`` 。这在编译模式下更常见，因为编译后的图可能改变了操作顺序。
 
-**显存泄漏**。如果编译后的训练循环出现显存泄漏，尝试：
+**显存泄漏 ** 。如果编译后的训练循环出现显存泄漏，尝试：
 
 .. code-block:: python
 
@@ -191,7 +191,7 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
    torch.cuda.empty_cache()
    gc.collect()
 
-**编译时间过长**。如果模型很大（如 >10 亿参数），编译时间可能超过 10 分钟。使用 ``progressive`` 模式：
+**编译时间过长 ** 。如果模型很大（如 >10 亿参数），编译时间可能超过 10 分钟。使用 ``progressive`` 模式：
 
 .. code-block:: bash
 
@@ -242,7 +242,7 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
 编译模式选择：default vs reduce-overhead
 =================================================
 
-在训练场景中，``default`` 和 ``reduce-overhead`` 模式的选择需要综合考虑吞吐量和数值精度。
+在训练场景中， ``default`` 和 ``reduce-overhead`` 模式的选择需要综合考虑吞吐量和数值精度。
 
 ``default`` 模式的特点
 ---------------------------
@@ -257,11 +257,11 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
 
 ``reduce-overhead`` 在推理场景中效果显著，但在训练中需要谨慎使用：
 
-1. **CUDA Graph 与反向传播的冲突**。CUDA Graph 要求计算图在捕获后完全固定。但训练时，反向传播的计算图依赖于前向传播的输出——这本身是确定的，但 autograd graph 的构建涉及一些 Python 层面的操作，可能导致 graph break。
+1.**CUDA Graph 与反向传播的冲突 ** 。CUDA Graph 要求计算图在捕获后完全固定。但训练时，反向传播的计算图依赖于前向传播的输出——这本身是确定的，但 autograd graph 的构建涉及一些 Python 层面的操作，可能导致 graph break。
 
-2. **梯度更新模式变化**。CUDA Graph 捕获后，权重更新是通过 ``optimizer.step()`` 在 Python 层面完成的，不在 Graph 内。这意味着 CUDA Graph 只覆盖 ``forward + backward`` 部分，**没有覆盖 optimizer step**。
+2.**梯度更新模式变化 ** 。CUDA Graph 捕获后，权重更新是通过 ``optimizer.step()`` 在 Python 层面完成的，不在 Graph 内。这意味着 CUDA Graph 只覆盖 ``forward + backward`` 部分，**没有覆盖 optimizer step** 。
 
-3. **数值精度差异**。由于 kernel 融合改变了浮点运算的顺序（如 A+B+C 可能变为 (A+B)+C 或 A+(B+C)），``reduce-overhead`` 模式可能导致训练结果与 eager 模式略有不同。对于对精度敏感的训练任务，这种差异可能影响模型收敛。
+3.**数值精度差异** 。由于 kernel 融合改变了浮点运算的顺序（如 A+B+C 可能变为 (A+B)+C 或 A+(B+C)）， ``reduce-overhead`` 模式可能导致训练结果与 eager 模式略有不同。对于对精度敏感的训练任务，这种差异可能影响模型收敛。
 
 .. list-table::
    :header-rows: 1
@@ -293,12 +293,12 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
 
 .. tip::
 
-   对于训练任务，**从 ``default`` 模式开始**。如果模型收敛正常，可以尝试 ``max-autotune`` 提升吞吐量。``reduce-overhead`` 模式主要为推理设计，将其用于训练时务必验证数值准确性。
+   对于训练任务， **从 ``default`` 模式开始 ** 。如果模型收敛正常，可以尝试 ``max-autotune`` 提升吞吐量。 ``reduce-overhead`` 模式主要为推理设计，将其用于训练时务必验证数值准确性。
 
 Gradient Scaling 与编译图的交互
 ============================================
 
-使用 AMP（Automatic Mixed Precision）时，``GradScaler`` 的作用是防止 fp16 梯度下溢。编译后的计算图与 ``GradScaler`` 的交互有一些微妙的细节。
+使用 AMP（Automatic Mixed Precision）时， ``GradScaler`` 的作用是防止 fp16 梯度下溢。编译后的计算图与 ``GradScaler`` 的交互有一些微妙的细节。
 
 交互流程
 ------------
@@ -348,24 +348,24 @@ Gradient Scaling 与编译图的交互
 
 对于长时间运行的训练任务（如大模型预训练），编译策略需要额外考虑：
 
-- **累积编译时间**：如果模型在训练过程中因数据分布变化而频繁重新编译，累积的编译时间可能抵消编译带来的加速收益
-- **动态数据形状**：图像大小变化、序列长度分布变化都会触发重新编译
-- **分布式环境**：多 GPU 场景下的编译时间线性增长（详见 :ref:`multi-gpu-scenarios`）
+- **累积编译时间 ** ：如果模型在训练过程中因数据分布变化而频繁重新编译，累积的编译时间可能抵消编译带来的加速收益
+- **动态数据形状 ** ：图像大小变化、序列长度分布变化都会触发重新编译
+- **分布式环境** ：多 GPU 场景下的编译时间线性增长（详见 :ref:`multi-gpu-scenarios`）
 
 示例代码
 ============
 
-完整的 compiled 训练循环示例见 ``examples/training_loop.py``。该文件包含：
+完整的 compiled 训练循环示例见 ``examples/training_loop.py`` 。该文件包含：
 
-- ``SmallResNet``：一个用于演示的简化 ResNet 模型
-- ``CompiledTrainer``：封装了完整训练流程的 Trainer 类，支持多种编译模式和 AMP
-- ``train_with_gradient_accumulation``：展示了梯度累积与 torch.compile 的配合方式
-- ``run_benchmark``：训练模式下不同编译模式的吞吐量对比
+- ``SmallResNet`` ：一个用于演示的简化 ResNet 模型
+- ``CompiledTrainer`` ：封装了完整训练流程的 Trainer 类，支持多种编译模式和 AMP
+- ``train_with_gradient_accumulation`` ：展示了梯度累积与 torch.compile 的配合方式
+- ``run_benchmark`` ：训练模式下不同编译模式的吞吐量对比
 
-基准测试工具见 ``examples/benchmark_utils.py``。该文件提供：
+基准测试工具见 ``examples/benchmark_utils.py`` 。该文件提供：
 
-- ``timing_median``：中位数计时（排除异常值）
-- ``BenchmarkRunner``：多模式自动对比运行器
-- ``warmup_cuda``：CUDA 预热函数
-- ``cuda_memory_snapshot``：显存快照
-- ``format_speedup_table``：加速比表格格式化
+- ``timing_median`` ：中位数计时（排除异常值）
+- ``BenchmarkRunner`` ：多模式自动对比运行器
+- ``warmup_cuda`` ：CUDA 预热函数
+- ``cuda_memory_snapshot`` ：显存快照
+- ``format_speedup_table`` ：加速比表格格式化

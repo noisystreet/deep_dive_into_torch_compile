@@ -6,15 +6,15 @@ GPU 代码生成
 
 .. note::
 
-   **Inductor 生成的 Triton 代码看起来像手写的吗？**
-   如果你曾经看过 Inductor 生成的 Triton kernel 源码，你会发现它的风格和手写 Triton kernel 非常相似——同样的 ``tl.load``、``tl.store``、掩码检查。这是因为 Inductor 的 ``TritonKernel`` 是逐行生成代码的，相当于一个"编译器即代码模板"的过程。但 Inductor 永远不会生成 ``tl.dot`` 调用——它会将矩阵乘法交给 ``TemplateBuffer`` 处理，使用高度优化的 Triton GEMM 模板，而不是让 codegen 去拼凑矩阵乘法。这是 Inductor 的一个关键设计：**逐元素和归约操作由编译器生成，而矩阵乘法则交给预定义模板**。
+   **Inductor 生成的 Triton 代码看起来像手写的吗？ **
+   如果你曾经看过 Inductor 生成的 Triton kernel 源码，你会发现它的风格和手写 Triton kernel 非常相似——同样的 ``tl.load`` 、 ``tl.store`` 、掩码检查。这是因为 Inductor 的 ``TritonKernel`` 是逐行生成代码的，相当于一个"编译器即代码模板"的过程。但 Inductor 永远不会生成 ``tl.dot`` 调用——它会将矩阵乘法交给 ``TemplateBuffer`` 处理，使用高度优化的 Triton GEMM 模板，而不是让 codegen 去拼凑矩阵乘法。这是 Inductor 的一个关键设计：** 逐元素和归约操作由编译器生成，而矩阵乘法则交给预定义模板** 。
 
 TritonScheduling 和 TritonKernel 负责将 IRNode 翻译为 Triton 代码——这是 Inductor 在 GPU 上的默认代码生成后端。
 
 TritonScheduling 架构
 ===========================
 
-TritonScheduling（在 ``codegen/triton.py`` 中）继承自 ``SIMDScheduling``，是 GPU 代码生成的核心。它的关键特性：
+TritonScheduling（在 ``codegen/triton.py`` 中）继承自 ``SIMDScheduling`` ，是 GPU 代码生成的核心。它的关键特性：
 
 .. code-block:: python
    :caption: pytorch/torch/_inductor/codegen/triton.py
@@ -100,9 +100,9 @@ Tiling 策略
 
 TritonScheduling 的 tiling 策略决定了 kernel 的并行粒度。核心参数包括：
 
-- **BLOCK_SIZE**：每个 program（thread block）处理的元素数量
-- **num_warps**：每个 program 的 warp 数量（默认 4 或 8）
-- **num_stages**：软件流水线阶段数（默认 3 或 4）
+- **BLOCK_SIZE** ：每个 program（thread block）处理的元素数量
+- **num_warps** ：每个 program 的 warp 数量（默认 4 或 8）
+- **num_stages** ：软件流水线阶段数（默认 3 或 4）
 
 在 ``default`` 模式下，tiling 参数基于启发式规则决定：
 
@@ -145,7 +145,7 @@ Reduction 的代码生成
 TemplateBuffer 的代码生成
 ===============================
 
-对于矩阵乘法和卷积，Inductor 使用预定义的 Triton kernel 模板（``TemplateBuffer``）。这些模板针对特定问题规模调优，通常比通用的 pointwise/reduction 代码生成更高效。
+对于矩阵乘法和卷积，Inductor 使用预定义的 Triton kernel 模板（ ``TemplateBuffer`` ）。这些模板针对特定问题规模调优，通常比通用的 pointwise/reduction 代码生成更高效。
 
 Triton 模板的代码生成路径如下：
 

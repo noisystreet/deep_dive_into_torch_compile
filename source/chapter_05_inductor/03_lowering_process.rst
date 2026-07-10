@@ -9,7 +9,7 @@
 GraphLowering 的核心机制
 ==============================
 
-``GraphLowering`` 继承自 ``torch.fx.Interpreter``：
+``GraphLowering`` 继承自 ``torch.fx.Interpreter`` ：
 
 .. code-block:: python
    :caption: pytorch/torch/_inductor/graph.py
@@ -113,7 +113,7 @@ call_function 的完整调度逻辑
 
        elif has_decomposition_in_aot(target):
            # 已由 AOTAutograd 分解过的算子，直接回退到 ExternKernel
-           result = ExternKernel.create(target, *args, **kwargs)
+           result = ExternKernel.create(target, *args,**kwargs)
 
        else:
            # 尝试通过 Inductor 自身的 decomposition 展开
@@ -132,7 +132,7 @@ call_function 的完整调度逻辑
 
 这里的关键动作是 **TensorBox 解包**——在调用 lowering 函数之前，将参数中的 TensorBox 层层剥开，获取底层真实的 IRNode（如 StorageBox、InputBuffer）。低频操作才会进入 ExternKernel 路径。
 
-整个 lowering 过程本质上就是一个**查表 + 调用**的过程：
+整个 lowering 过程本质上就是一个 ** 查表 + 调用**的过程：
 
 .. code-block:: text
 
@@ -191,17 +191,17 @@ lowerings 表的内部结构
    * - **模板模式**
      - ``TemplateBuffer``
      - ``aten.mm``、``aten.convolution``、``aten.bmm``
-   * - **外部模式**
+   * - **外部模式 **
      - ``ExternKernel``
      - ``aten.sort``、``aten.unique``、自定义 C++ 扩展
 
-**逐元素模式** 最直接——对每个输入索引独立计算一个输出值。lowering 函数构造一个 ``Pointwise``，其 ``inner_fn`` 通过 ``ops.*`` 原语描述计算逻辑。
+** 逐元素模式** 最直接——对每个输入索引独立计算一个输出值。lowering 函数构造一个 ``Pointwise``，其 ``inner_fn`` 通过 ``ops.*`` 原语描述计算逻辑。
 
-**归约模式** 需要额外指定归约的维度和类型。``Reduction`` IRNode 包含 ``reduction_ranges`` 和 ``reduction_type`` 两个关键字段。
+**归约模式 ** 需要额外指定归约的维度和类型。``Reduction`` IRNode 包含 ``reduction_ranges`` 和 ``reduction_type`` 两个关键字段。
 
-**模板模式** 用于矩阵乘法和卷积等高密度计算。这些操作有高度优化的手写模板（Triton GEMM 或 cuBLAS），编译器不会逐元素生成代码。
+**模板模式 ** 用于矩阵乘法和卷积等高密度计算。这些操作有高度优化的手写模板（Triton GEMM 或 cuBLAS），编译器不会逐元素生成代码。
 
-**外部模式** 是 fallback——对于 Inductor 无法 lowering 的操作，直接调用 PyTorch 的 eager 实现。
+**外部模式 ** 是 fallback——对于 Inductor 无法 lowering 的操作，直接调用 PyTorch 的 eager 实现。
 
 具体例子：四种模式逐一分析
 ---------------------------------------
@@ -223,7 +223,7 @@ lowerings 表的内部结构
 
 ``inner_fn`` 是一个闭包——它捕获了 ``x`` 对应的 IRNode，当被 codegen 调用时，``ops.load(x, idx)`` 生成加载代码，``ops.sin(...)`` 生成计算代码。整个内联函数的"编译"被推迟到了 codegen 阶段。
 
-**例 2：Reduction 模式——aten.sum**
+** 例 2：Reduction 模式——aten.sum**
 
 .. code-block:: python
 
@@ -241,7 +241,7 @@ lowerings 表的内部结构
 
 ``reduction_ranges`` 告诉 Scheduler：「这个节点需要对某个维度做归约」。在 codegen 阶段，TritonKernel 会将归约维度的索引映射为 ``tl.sum(value, axis)``。
 
-**例 3：TemplateBuffer 模式——aten.mm**
+** 例 3：TemplateBuffer 模式——aten.mm**
 
 .. code-block:: python
 
@@ -260,7 +260,7 @@ lowerings 表的内部结构
 
 ``TemplateBuffer`` 不会被 Scheduler 进一步融合。在 codegen 阶段，它直接使用手写的 Triton GEMM 模板（如 ``atlas_gemm``），而不是通过 ``inner_fn`` 逐元素生成。
 
-**例 4：ExternKernel 模式——aten.sort**
+** 例 4：ExternKernel 模式——aten.sort**
 
 .. code-block:: python
 
@@ -276,7 +276,7 @@ lowerings 表的内部结构
 TensorBox 解包与包装
 -----------------------------
 
-整个 lowering 过程中，**TensorBox 的解包和重新包装** 是贯穿始终的机械性工作：
+整个 lowering 过程中， **TensorBox 的解包和重新包装** 是贯穿始终的机械性工作：
 
 .. code-block:: text
 
@@ -302,9 +302,9 @@ TensorBox 解包与包装
        ▼
    下一级 lowering 函数消费时再次解包
 
-这种"解包 → 计算 → 重新包装"的模式贯穿整个 lowering 过程。正是这种模式使得 Inductor 的 IR 具有**惰性求值**的特性——``inner_fn`` 在被 codegen 调用之前不会实际执行任何计算。
+这种"解包 → 计算 → 重新包装"的模式贯穿整个 lowering 过程。正是这种模式使得 Inductor 的 IR 具有 **惰性求值** 的特性——``inner_fn`` 在被 codegen 调用之前不会实际执行任何计算。
 
-TensorBox 的作用不只是"包装"。它还负责**视图布局管理**——当一个操作产生视图（如 ``x.T``、``x[1:]``）时，TensorBox 会记录布局信息而不是实际创建新的 buffer：
+TensorBox 的作用不只是"包装"。它还负责 **视图布局管理**——当一个操作产生视图（如 ``x.T``、``x[1:]``）时，TensorBox 会记录布局信息而不是实际创建新的 buffer：
 
 .. code-block:: python
 
@@ -323,7 +323,7 @@ Broadcast 与 Type Promotion
 
 Lowering 框架自动处理两个常见语义：
 
-**Broadcast**：当 ``register_lowering`` 的 ``broadcast=True`` 时，lowering 框架在调用函数前自动对参数做广播展开：
+**Broadcast** ：当 ``register_lowering`` 的 ``broadcast=True`` 时，lowering 框架在调用函数前自动对参数做广播展开：
 
 .. code-block:: text
 
@@ -335,7 +335,7 @@ Lowering 框架自动处理两个常见语义：
        ▼
    Pointwise(inner_fn=lambda idx: ops.load(x, idx) + ops.load(y, idx))
 
-**Type Promotion**：当操作数类型不同时（如 float32 + float16），``type_promotion_kind`` 参数控制提升规则。Inductor 在 lowering 阶段预先确定输出类型，避免在 codegen 阶段再做类型判断。这符合第 2.1 节的"编译重、运行轻"原则。
+**Type Promotion** ：当操作数类型不同时（如 float32 + float16），``type_promotion_kind`` 参数控制提升规则。Inductor 在 lowering 阶段预先确定输出类型，避免在 codegen 阶段再做类型判断。这符合第 2.1 节的"编译重、运行轻"原则。
 
 Fallback 机制
 ==================
@@ -356,7 +356,7 @@ Fallback 机制
            else:
                # 创建 ExternKernel 回退
                # 编译时调用 eager 实现
-               return ExternKernel.create(target, *args, **kwargs)
+               return ExternKernel.create(target, *args,**kwargs)
        
        return lowerings[target](*args, **kwargs)
 
@@ -367,7 +367,7 @@ Fallback 机制
 
 除了 ``call_function`` 节点外，``GraphLowering`` 还处理另外两种关键节点：
 
-**placeholder（输入）**：每个 ``placeholder`` 节点对应一个函数输入。``GraphLowering`` 将其包装为 ``InputBuffer``（是 ``ComputedBuffer`` 的子类）：
+**placeholder（输入） ** ：每个 ``placeholder`` 节点对应一个函数输入。``GraphLowering`` 将其包装为 ``InputBuffer``（是 ``ComputedBuffer`` 的子类）：
 
 .. code-block:: python
 
@@ -377,7 +377,7 @@ Fallback 机制
    ))
    self.graph_inputs[arg_name] = TensorBox(input_buffer)
 
-**output（输出）**：``output`` 节点收集所有返回值对应的 IRNode，存入 ``self.graph_outputs`` 列表，供后续的 wrapper 代码生成使用。
+**output（输出） ** ：``output`` 节点收集所有返回值对应的 IRNode，存入 ``self.graph_outputs`` 列表，供后续的 wrapper 代码生成使用。
 
 降级结果的形态
 ====================
@@ -407,7 +407,7 @@ lowering 完成后，``GraphLowering`` 中积累了以下数据：
 
 - **GraphLowering** 继承 ``torch.fx.Interpreter``，按拓扑序遍历 FX 节点
 - **call_function** 的完整调度逻辑包括：TensorBox 解包、lowerings 查表、alignment check、decomposition 回退、ExternKernel 降级，最后重新包装为 TensorBox 并注册到 operations 列表
-- **四种 lowering 模式**：逐元素（Pointwise）、归约（Reduction）、模板（TemplateBuffer）、外部（ExternKernel），每种模式对应不同的 IRNode 类型和生成策略
-- **lowerings 表** 通过 ``register_lowering`` 装饰器增量构建，覆盖 600+ ATen 算子。Broadcast 和 type promotion 由 lowering 框架自动处理
+- **四种 lowering 模式 ** ：逐元素（Pointwise）、归约（Reduction）、模板（TemplateBuffer）、外部（ExternKernel），每种模式对应不同的 IRNode 类型和生成策略
+- **lowerings 表 ** 通过 ``register_lowering`` 装饰器增量构建，覆盖 600+ ATen 算子。Broadcast 和 type promotion 由 lowering 框架自动处理
 - **TensorBox 解包与包装** 贯穿始终，使 IR 具有惰性求值的特性——``inner_fn`` 在被 codegen 调用之前不会执行实际计算
 - 降级结果存储在 ``operations`` 列表中，作为 Scheduler 的输入

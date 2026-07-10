@@ -127,7 +127,7 @@ Step 1 — 检查 Graph Break
 
 .. note::
 
-   **ResNet-18 本身不应该有 graph break**。
+   **ResNet-18 本身不应该有 graph break** 。
    ResNet-18 由 Conv2d、BatchNorm、ReLU 和残差连接组成，这些操作 Dynamo 都原生支持。如果你在 ResNet-18 中看到 graph break，请检查是否使用了自定义操作或第三方库（如 torchvision.ops.nms）。
 
 Step 2 — 使用 Minimizer 定位（若有错误）
@@ -139,7 +139,7 @@ Step 2 — 使用 Minimizer 定位（若有错误）
 
    TORCHDYNAMO_REPRO_AFTER="aot" python train.py
 
-这会在当前目录生成 ``minifier_launcher.py`` 和 ``repro.py``。如果模型很大，minimizer 可能需要数分钟来完成最小化。
+这会在当前目录生成 ``minifier_launcher.py`` 和 ``repro.py`` 。如果模型很大，minimizer 可能需要数分钟来完成最小化。
 
 .. code-block:: text
 
@@ -170,7 +170,7 @@ Step 2 — 使用 Minimizer 定位（若有错误）
 
 .. tip::
 
-   **何时使用 minimizer？**
+**何时使用 minimizer？ **
    minimizer 主要用于编译错误或结果一致性错误。对于"只是慢"的性能问题，minimizer 帮助有限——优先使用 profiler 和日志系统。
 
 Step 3 — Profiler 分析
@@ -314,8 +314,8 @@ Step 4 — 分析融合效率
 
 .. note::
 
-   **Fusion 不是越多越好**。
-   过度融合可能导致单个 kernel 过于复杂，占用过多寄存器或共享内存，反而降低性能。``max_fusion_size`` 的推荐范围是 8-16。如果调到 16 后性能仍然没有提升，问题可能不在 fusion 上。
+**Fusion 不是越多越好** 。
+   过度融合可能导致单个 kernel 过于复杂，占用过多寄存器或共享内存，反而降低性能。 ``max_fusion_size`` 的推荐范围是 8-16。如果调到 16 后性能仍然没有提升，问题可能不在 fusion 上。
 
 Step 5 — 应用修复
 ====================

@@ -11,13 +11,13 @@
 
 联合图是编译时的中间产物，不能直接用于运行时。原因有三：
 
-1. **执行时机不同**：前向传播在训练迭代的前半段执行，反向传播在后半段。它们不能"同时执行"。
+1. **执行时机不同 ** ：前向传播在训练迭代的前半段执行，反向传播在后半段。它们不能"同时执行"。
 
-2. **输入/输出不同**：前向图的输入是模型的输入张量，输出是 loss + saved tensors。反向图的输入是 grad_output + saved tensors，输出是梯度。
+2.**输入/输出不同 ** ：前向图的输入是模型的输入张量，输出是 loss + saved tensors。反向图的输入是 grad_output + saved tensors，输出是梯度。
 
-3. **需要不同的 guard**：前向图和反向图可能对应不同的输入形状约束。
+3.**需要不同的 guard** ：前向图和反向图可能对应不同的输入形状约束。
 
-所以，必须将联合图分割为两个独立的 ``fx.GraphModule``：
+所以，必须将联合图分割为两个独立的 ``fx.GraphModule`` ：
 
 .. mermaid::
 
@@ -71,7 +71,7 @@
 朴素分区策略
 ===============
 
-最简单的分区策略是：**所有 ``is_forward`` 标记的节点放入前向图，所有 ``is_backward`` 标记的节点放入反向图**。
+最简单的分区策略是： **所有 ``is_forward`` 标记的节点放入前向图，所有 ``is_backward`` 标记的节点放入反向图** 。
 
 回想上一节提到的 ``partitioner_tag`` 标记：
 
@@ -89,7 +89,7 @@
 2. 在前向副本中，删除所有 ``is_backward`` 节点，然后运行死代码消除（DCE）
 3. 在反向副本中，删除所有 ``is_forward`` 节点，但保留被反向引用的前向节点作为 placeholder（这些就是 "saved tensors"）
 
-但这个朴素策略有一个问题：**有些前向节点的输出既被前向使用也被反向使用** （例如 ``sin(x)`` 的输出在反向中需要用于计算 ``cos(x) * grad_output``）。这些节点会在前向图中保留，但它们的输出需要被"保存"到反向图中。
+但这个朴素策略有一个问题： **有些前向节点的输出既被前向使用也被反向使用** （例如 ``sin(x)`` 的输出在反向中需要用于计算 ``cos(x) * grad_output`` ）。这些节点会在前向图中保留，但它们的输出需要被"保存"到反向图中。
 
 默认分区器
 ===============
@@ -118,13 +118,13 @@ AOTAutograd 的默认分区器定义在 ``pytorch/torch/_functorch/_aot_autograd
 
 前向图的输出由两部分组成：
 
-1. **用户定义的前向返回值** （如 loss）
-2. **反向所需的中继值** （saved tensors）
+1. **用户定义的前向返回值 ** （如 loss）
+2.**反向所需的中继值 ** （saved tensors）
 
 类似地，反向图的输入由两部分组成：
 
-1. **来自前向的 saved tensors**
-2. **从上游传来的梯度** （grad_outputs）
+1.**来自前向的 saved tensors**
+2.** 从上游传来的梯度 **（grad_outputs）
 
 ViewAndMutationMeta 的角色
 =================================
@@ -163,7 +163,7 @@ ViewAndMutationMeta 的角色
        │
        └─ 更新参数
 
-在运行时，``AOTDispatchAutograd``（在 ``runtime_wrappers.py`` 中）封装了这个流程。它负责：
+在运行时， ``AOTDispatchAutograd`` （在 ``runtime_wrappers.py`` 中）封装了这个流程。它负责：
 
 1. 调用编译后的前向函数
 2. 保存前向返回的 saved tensors
@@ -176,9 +176,9 @@ ViewAndMutationMeta 的角色
 
 这一节介绍了图分区的基本概念：
 
-- **朴素分区**：根据 ``partitioner_tag`` 将联合图切分为前向和反向两张子图
-- **默认分区器**：在 ``runtime_wrappers.py`` 中，通过复制 + 裁剪 + DCE 实现
-- **ViewAndMutationMeta**：保存分区后前向/反向接口的元信息
-- **运行时封装**：``AOTDispatchAutograd`` 透明地管理前向/反向的执行和 saved tensors 的传递
+- ** 朴素分区 **：根据 ``partitioner_tag`` 将联合图切分为前向和反向两张子图
+- ** 默认分区器 **：在 ``runtime_wrappers.py`` 中，通过复制 + 裁剪 + DCE 实现
+- **ViewAndMutationMeta** ：保存分区后前向/反向接口的元信息
+- **运行时封装 ** ： ``AOTDispatchAutograd`` 透明地管理前向/反向的执行和 saved tensors 的传递
 
-默认分区器对所有前向中间结果一视同仁：只要反向用到就保存。但有些中间结果可以通过**重计算**（recomputation）的方式在反向中重新算出来，而不是保存它们。下一节的 min-cut 重计算分区器会讨论这个话题。
+默认分区器对所有前向中间结果一视同仁：只要反向用到就保存。但有些中间结果可以通过**重计算** （recomputation）的方式在反向中重新算出来，而不是保存它们。下一节的 min-cut 重计算分区器会讨论这个话题。

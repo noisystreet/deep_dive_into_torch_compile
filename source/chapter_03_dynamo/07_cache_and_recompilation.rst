@@ -4,7 +4,7 @@
 缓存与重新编译
 =======================
 
-第 2.4 节介绍了 torch.compile 的三层缓存架构。这一节我们聚焦第一层——**Dynamo 自身的缓存机制**：code object 上的缓存链表是怎么组织的，什么样的条件会触发重新编译。
+第 2.4 节介绍了 torch.compile 的三层缓存架构。这一节我们聚焦第一层——**Dynamo 自身的缓存机制 ** ：code object 上的缓存链表是怎么组织的，什么样的条件会触发重新编译。
 
 code object 缓存链表
 ==========================
@@ -66,7 +66,7 @@ Dynamo 将编译结果缓存到**每个 Python 函数的 code object** 上。具
        F --> M["返回结果"]
        L --> M
 
-这里有一个性能细节：**缓存链表是从头开始遍历的**。最近插入的条目（即最近一次编译的结果）被放在链表头部。这意味着如果输入模式高度稳定（始终是相同的形状），第一次 miss 后后续调用总能一次命中。
+这里有一个性能细节： **缓存链表是从头开始遍历的 ** 。最近插入的条目（即最近一次编译的结果）被放在链表头部。这意味着如果输入模式高度稳定（始终是相同的形状），第一次 miss 后后续调用总能一次命中。
 
 缓存大小限制与重新编译
 ==============================
@@ -76,10 +76,10 @@ Dynamo 将编译结果缓存到**每个 Python 函数的 code object** 上。具
 - **recompile_limit** （默认 8）：限制单个 nn.Module 实例的缓存条目数
 - **accumulated_recompile_limit** （默认 256）：限制同一个 code object 的总编译次数
 
-当超过这些限制时，Dynamo 会触发 **CacheSizeRelevantForFrame** 逻辑（定义在 ``pytorch/torch/_dynamo/cache_size.py``），有两种可能的处理方式：
+当超过这些限制时，Dynamo 会触发 **CacheSizeRelevantForFrame** 逻辑（定义在 ``pytorch/torch/_dynamo/cache_size.py`` ），有两种可能的处理方式：
 
-1. **如果设置了 ``error_on_recompile=True``** （由 ``FailOnRecompileLimitHit`` 处理）：直接抛出异常，让用户明确知道缓存已满
-2. **默认行为**：fallback 到 eager 模式——不再尝试编译新的变体，后续调用直接用 Python 解释器执行
+1.**如果设置了 ``error_on_recompile=True``** （由 ``FailOnRecompileLimitHit`` 处理）：直接抛出异常，让用户明确知道缓存已满
+2.**默认行为** ：fallback 到 eager 模式——不再尝试编译新的变体，后续调用直接用 Python 解释器执行
 
 这个 fallback 行为是 Dynamo 安全设计的一部分：它宁愿性能回退到 eager，也不愿意无限地重新编译直到内存耗尽。
 
@@ -127,12 +127,12 @@ Dynamo 将编译结果缓存到**每个 Python 函数的 code object** 上。具
    Step 11: batch size = 64 → guard 命中
    ...
 
-如果在训练循环中 batch size 频繁变化（比如数据集的最后一个 batch 余量不一），每次新形状都会触发重新编译。在这种情况下，建议设置 ``dynamic=True`` 或者确保数据加载器的 ``drop_last=True``。
+如果在训练循环中 batch size 频繁变化（比如数据集的最后一个 batch 余量不一），每次新形状都会触发重新编译。在这种情况下，建议设置 ``dynamic=True`` 或者确保数据加载器的 ``drop_last=True`` 。
 
 ``torch.compiler.reset()`` 的行为
 =========================================
 
-``torch.compiler.reset()``（等价于 ``torch._dynamo.reset()``）会清空所有 Dynamo 缓存：
+``torch.compiler.reset()`` （等价于 ``torch._dynamo.reset()`` ）会清空所有 Dynamo 缓存：
 
 .. code-block:: python
 
@@ -156,7 +156,7 @@ reset 内部做的事情：
 2. 重置全局缓存计数器
 3. 重置 guard 状态
 
-注意：reset 不会影响 Inductor 的磁盘缓存。即使调用了 ``reset()``，磁盘上已经编译好的 ``.so`` 文件仍然存在——下次编译同样的 IRNode 时仍然可以命中。
+注意：reset 不会影响 Inductor 的磁盘缓存。即使调用了 ``reset()`` ，磁盘上已经编译好的 ``.so`` 文件仍然存在——下次编译同样的 IRNode 时仍然可以命中。
 
 第 2.4 节用整节的篇幅讨论了三层缓存（Dynamo guard 缓存、AOTAutograd 缓存、Inductor 磁盘缓存），建议结合这一节一起阅读，获得完整的缓存全景。
 
@@ -165,9 +165,9 @@ reset 内部做的事情：
 
 这一节我们聚焦 Dynamo 的缓存机制：
 
-- 缓存以**链表形式**存储在 code object 的 ``co_extra`` 中
-- 缓存查找遍历链表，**对每个条目执行 guard 检查**
-- 超过缓存上限会 **fallback 到 eager** 模式
-- ``torch.compiler.reset()`` **清空内存缓存**，但不会影响磁盘缓存
+- 缓存以 **链表形式 ** 存储在 code object 的 ``co_extra`` 中
+- 缓存查找遍历链表，**对每个条目执行 guard 检查 **
+- 超过缓存上限会**fallback 到 eager** 模式
+- ``torch.compiler.reset()``**清空内存缓存 ** ，但不会影响磁盘缓存
 
-下一节我们深入 **符号形状** （第 3.8 节）——当输入维度不固定时，Dynamo 如何用 ``ShapeEnv`` 替代具体数值 guard，减少频繁重编译。
+下一节我们深入**符号形状** （第 3.8 节）——当输入维度不固定时，Dynamo 如何用 ``ShapeEnv`` 替代具体数值 guard，减少频繁重编译。

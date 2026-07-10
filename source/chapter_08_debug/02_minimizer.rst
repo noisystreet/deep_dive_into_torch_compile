@@ -4,7 +4,7 @@
 Minimizer
 ==========
 
-Minimizer 是 PyTorch 提供的自动调试工具，用于**在复杂的编译过程中定位问题的最小复现**。当 ``torch.compile`` 编译一个模型失败时，Minimizer 可以自动缩小问题范围，找到导致失败的最小子图和输入。
+Minimizer 是 PyTorch 提供的自动调试工具，用于 **在复杂的编译过程中定位问题的最小复现 ** 。当 ``torch.compile`` 编译一个模型失败时，Minimizer 可以自动缩小问题范围，找到导致失败的最小子图和输入。
 
 什么情况下使用 Minimizer？
 ================================
@@ -43,13 +43,13 @@ Minimizer 通过环境变量启用：
 
 ``TORCHDYNAMO_REPRO_AFTER`` 支持两种模式：
 
-**dynamo 模式**：在 Dynamo 捕获图之后触发复现。当 Dynamo 本身报错时使用：
+**dynamo 模式 ** ：在 Dynamo 捕获图之后触发复现。当 Dynamo 本身报错时使用：
 
 .. code-block:: bash
 
    TORCHDYNAMO_REPRO_AFTER="dynamo" python train.py
 
-**aot 模式**：在 AOTAutograd 处理之后触发复现。当后端的 lowering 或代码生成报错时使用：
+**aot 模式 ** ：在 AOTAutograd 处理之后触发复现。当后端的 lowering 或代码生成报错时使用：
 
 .. code-block:: bash
 
@@ -74,7 +74,7 @@ Minimizer 通过环境变量启用：
 Minimizer 的工作原理
 ===========================
 
-Minimizer 的核心是一个**二分搜索（bisect）**算法：
+Minimizer 的核心是一个**二分搜索（bisect）** 算法：
 
 .. mermaid::
 
@@ -89,7 +89,7 @@ Minimizer 的核心是一个**二分搜索（bisect）**算法：
        CHECK -->|"否"| SPLIT
        CHECK -->|"是"| OUTPUT["输出最小复现代码<br/>单个有问题的节点 + 最小输入"]
 
-这个过程相当于一个自动化的 ``git bisect``，但作用于计算图节点而不是 git 提交。
+这个过程相当于一个自动化的 ``git bisect`` ，但作用于计算图节点而不是 git 提交。
 
 手动复现
 ===========
@@ -178,13 +178,13 @@ Minimizer 实战：定位一个真实的编译错误
        return None
 
    compiled = torch.compile(fn, fullgraph=True)
-   compiled(*args, **kwargs)
+   compiled(*args,**kwargs)
    ================================================================================
 
 .. note::
 
    注意 Minimizer 自动提取出了最小复现路径：它发现 ``print`` 是导致 graph break 的关键操作，
-   并且将输入简化为单个 ``torch.randn(3)``。 ``fullgraph=True`` 是 Minimizer 自动添加的，
+   并且将输入简化为单个 ``torch.randn(3)`` 。 ``fullgraph=True`` 是 Minimizer 自动添加的，
    用于强制要求完整的图捕获——这样只要有任何 graph break 就会直接报错。
 
 第二步，查看生成的复现脚本，确认 root cause 是 ``print`` 操作。修复方法很简单——移除 ``print`` 或者将其移到编译区域之外。
@@ -227,6 +227,6 @@ Minimizer 实战：定位一个真实的编译错误
 Minimizer 的限制
 ======================
 
-- Minimizer 只能定位**确定性的编译错误**。如果错误是随机出现的（如数据竞争），Minimizer 可能无法稳定复现
-- 对于**性能问题**（编译太慢、运行太慢），Minimizer 不适用——它只用于错误定位
-- Minimizer 的二分搜索假设错误是**单调的**——即子集保留错误性质。如果错误只在特定组合下出现，二分搜索可能失败
+- Minimizer 只能定位 ** 确定性的编译错误**。如果错误是随机出现的（如数据竞争），Minimizer 可能无法稳定复现
+- 对于 ** 性能问题**（编译太慢、运行太慢），Minimizer 不适用——它只用于错误定位
+- Minimizer 的二分搜索假设错误是 ** 单调的**——即子集保留错误性质。如果错误只在特定组合下出现，二分搜索可能失败

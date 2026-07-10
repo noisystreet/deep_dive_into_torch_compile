@@ -4,7 +4,7 @@
 Dynamic Shapes 调试
 =========================
 
-第 3.8 节介绍了符号形状（symbolic shapes）的原理——``ShapeEnv``、``SymNode`` 以及 ``dynamic=True`` 的工作方式。这一节聚焦 **如何诊断和优化** Dynamic Shapes 场景中的 guard 失败与频繁重编译问题。
+第 3.8 节介绍了符号形状（symbolic shapes）的原理——``ShapeEnv`` 、 ``SymNode`` 以及 ``dynamic=True`` 的工作方式。这一节聚焦 **如何诊断和优化 **Dynamic Shapes 场景中的 guard 失败与频繁重编译问题。
 
 判断是否触发了重新编译
 ===============================
@@ -39,7 +39,7 @@ Dynamic Shapes 调试
 常见的 Dynamic Shapes 问题
 ================================
 
-**形状变化被过度 guard**。以下代码会导致每次不同长度的输入都重新编译：
+** 形状变化被过度 guard** 。以下代码会导致每次不同长度的输入都重新编译：
 
 .. code-block:: python
 
@@ -51,9 +51,9 @@ Dynamic Shapes 调试
    fn(torch.randn(200))  # guard 失败，重新编译
    fn(torch.randn(300))  # guard 失败，重新编译
 
-**数据集形状不一致**。最常见的原因——训练/验证集的 batch size 或序列长度不一致。
+**数据集形状不一致 ** 。最常见的原因——训练/验证集的 batch size 或序列长度不一致。
 
-**数据预处理引入了动态形状**。如 ``torch.unique``、``torch.nonzero`` 等操作的输出形状取决于输入数据。
+**数据预处理引入了动态形状 ** 。如 ``torch.unique`` 、 ``torch.nonzero`` 等操作的输出形状取决于输入数据。
 
 使用 ShapeEnv 日志
 ==========================
@@ -204,7 +204,7 @@ Dynamic Shapes 调试工作流
 
        Static -->|"形状变化触发<br/>大量重编译"| Dynamic
 
-静态形状模式下，Dynamo 将每个维度的具体数值写入 guard，任何数值变化都触发重编译。动态形状模式下，guard 只检查维度的符号约束（如 ``s0 >= 1``），形状范围内的变化不会触发重编译。
+静态形状模式下，Dynamo 将每个维度的具体数值写入 guard，任何数值变化都触发重编译。动态形状模式下，guard 只检查维度的符号约束（如 ``s0 >= 1`` ），形状范围内的变化不会触发重编译。
 
 动态形状编译优化策略
 ============================
@@ -236,7 +236,7 @@ Dynamic Shapes vs Static Shapes 的权衡
      - 大（可做形状相关的常量折叠）
      - 中（需保留符号表达式）
 
-核心权衡：**动态形状减少了重编译次数，但生成的 kernel 不如静态形状高效**。如果重编译的性能损失大于 kernel 性能下降的损失，就应该使用动态形状。
+核心权衡： **动态形状减少了重编译次数，但生成的 kernel 不如静态形状高效 ** 。如果重编译的性能损失大于 kernel 性能下降的损失，就应该使用动态形状。
 
 使用 cache_size_limit 控制编译缓存
 --------------------------------------------
@@ -257,11 +257,11 @@ Dynamic Shapes vs Static Shapes 的权衡
    # 如果形状基本固定，减小限制可以节省内存
    config.cache_size_limit = 8
 
-当缓存被占满时，Dynamo 会驱逐最久未使用的编译结果（LRU 策略）。如果模型的形状种类超过 ``cache_size_limit``，就会发生"反复编译-被驱逐-再编译"的现象。
+当缓存被占满时，Dynamo 会驱逐最久未使用的编译结果（LRU 策略）。如果模型的形状种类超过 ``cache_size_limit`` ，就会发生"反复编译-被驱逐-再编译"的现象。
 
 .. tip::
 
-   **如何判断 cache_size_limit 是否过小？**
+**如何判断 cache_size_limit 是否过小？ **
    如果在 ``TORCH_LOGS="+dynamo"`` 日志中看到 ``cache miss`` 和 ``recompiling`` 交替出现，且编译总数（compile counter）远大于输入的形状种类数，说明 ``cache_size_limit`` 可能过小导致缓存被频繁驱逐。
 
 Inductor 如何应对符号形状
@@ -285,9 +285,9 @@ Inductor 如何应对符号形状
 
 符号形状对 Inductor 的影响：
 
-- **Tiling 参数不可静态确定**：Scheduler 基于符号表达式计算 block 大小，可能低于最优值
-- **循环边界使用符号变量**：生成的 Triton kernel 需要在运行时计算循环次数
-- **部分优化失效**：常量折叠、形状相关的 dead code elimination 在符号形状上受限
+- **Tiling 参数不可静态确定 ** ：Scheduler 基于符号表达式计算 block 大小，可能低于最优值
+- **循环边界使用符号变量 ** ：生成的 Triton kernel 需要在运行时计算循环次数
+- **部分优化失效** ：常量折叠、形状相关的 dead code elimination 在符号形状上受限
 
 .. code-block:: python
 
@@ -532,7 +532,7 @@ Step 4：性能对比
 
 .. tip::
 
-   **调试动态形状问题的快速 checklist**：
+   **调试动态形状问题的快速 checklist** ：
    1. 检查 ``TORCH_LOGS="+guards"`` 的 guard failed 频率
    2. 使用 ``dynamo_utils.counters`` 查看编译统计
    3. 标记明确会变化的维度为动态

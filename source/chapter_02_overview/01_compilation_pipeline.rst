@@ -6,13 +6,13 @@
 
 .. seealso::
 
-   **为什么选择三阶段架构？**
-   在 torch.compile 之前，PyTorch 的编译器尝试（TorchScript）试图在一个阶段内完成"图捕获 + 自动微分 + 代码生成"。这种做法耦合度高，任何一个环节出错整个编译就失败了。三阶段架构的设计灵感来自 LLVM——**每个阶段只做一件事，且通过标准化的中间表示（FX Graph）通信**。Dynamo 输出 FX Graph，AOTAutograd 消费并变换它，Inductor 消费变换后的图。这种松耦合的设计使得每个组件可以独立测试、独立演进。例如，社区已经开发了 ``torch-xla`` 后端，它直接消费 FX Graph 并生成为 XLA 代码，完全跳过了 Inductor。
+   **为什么选择三阶段架构？ **
+   在 torch.compile 之前，PyTorch 的编译器尝试（TorchScript）试图在一个阶段内完成"图捕获 + 自动微分 + 代码生成"。这种做法耦合度高，任何一个环节出错整个编译就失败了。三阶段架构的设计灵感来自 LLVM——** 每个阶段只做一件事，且通过标准化的中间表示（FX Graph）通信 **。Dynamo 输出 FX Graph，AOTAutograd 消费并变换它，Inductor 消费变换后的图。这种松耦合的设计使得每个组件可以独立测试、独立演进。例如，社区已经开发了 ``torch-xla`` 后端，它直接消费 FX Graph 并生成为 XLA 代码，完全跳过了 Inductor。
 
 编译栈的设计原则
 ==========================
 
-第 1.1 节我们从历史角度回顾了 TorchScript → torch.compile 的三次路线演变。这里把散落在各章的设计决策收成 **六条原则**，作为阅读后续章节的「透镜」——遇到具体机制时，可以问：它体现了哪条原则？放弃了什么？代价是什么？
+第 1.1 节我们从历史角度回顾了 TorchScript → torch.compile 的三次路线演变。这里把散落在各章的设计决策收成** 六条原则** ，作为阅读后续章节的「透镜」——遇到具体机制时，可以问：它体现了哪条原则？放弃了什么？代价是什么？
 
 .. list-table::
    :header-rows: 1
@@ -38,7 +38,7 @@
      - Inductor IRNode（第 5.1 节）
    * - **编译重、运行轻**
      - 编译可以慢（autotune、重编译）；推理/训练 loop 必须快
-     - 磁盘缓存（第 2.4 节）、AOTInductor（第 9.5 节）、``max-autotune`` （第 9.2 节）
+     - 磁盘缓存（第 2.4 节）、AOTInductor（第 9.5 节）、 ``max-autotune`` （第 9.2 节）
 
 用一个具体场景串起这些原则。假设用户写了：
 
@@ -51,12 +51,12 @@
 
 第一次调用 ``train_step(x, y)`` 时发生了什么？
 
-1. **编译器适应 Python**：Dynamo 不会因为有 ``print`` 就拒绝编译，而是在 ``print`` 处 graph break，前后各形成一个子图（第 3.6 节）。
-2. **阶段专精**：Dynamo 只负责捕获前向 FX Graph；AOTAutograd 在编译期追联合反向图；Inductor 只负责生成 kernel——各干各的。
-3. **策略与机制分离**：Inductor 的 ``select_decomp_table()`` 决定 ``(x*y).sum()`` 要不要分解为基本算子，AOTAutograd 只执行分解，不关心 Triton 怎么写。
-4. **正确性优先**：若下次 ``x.shape`` 变了，guard 失败触发重编译；若重编译次数过多，fallback 到 eager 而不是 silent wrong result。
-5. **Define-by-Run**：Inductor 在遍历 FX 节点时逐个 ``lower`` 出 IRNode，而不是先建完整静态 IR 再优化。
-6. **编译重、运行轻**：首次调用可能要数秒编译；从第二次起命中缓存，执行接近手写 kernel 的速度。
+1. **编译器适应 Python** ：Dynamo 不会因为有 ``print`` 就拒绝编译，而是在 ``print`` 处 graph break，前后各形成一个子图（第 3.6 节）。
+2.**阶段专精 ** ：Dynamo 只负责捕获前向 FX Graph；AOTAutograd 在编译期追联合反向图；Inductor 只负责生成 kernel——各干各的。
+3.**策略与机制分离** ：Inductor 的 ``select_decomp_table()`` 决定 ``(x*y).sum()`` 要不要分解为基本算子，AOTAutograd 只执行分解，不关心 Triton 怎么写。
+4. **正确性优先 ** ：若下次 ``x.shape`` 变了，guard 失败触发重编译；若重编译次数过多，fallback 到 eager 而不是 silent wrong result。
+5.**Define-by-Run** ：Inductor 在遍历 FX 节点时逐个 ``lower`` 出 IRNode，而不是先建完整静态 IR 再优化。
+6.**编译重、运行轻 ** ：首次调用可能要数秒编译；从第二次起命中缓存，执行接近手写 kernel 的速度。
 
 .. code-block:: text
 
@@ -110,12 +110,12 @@
            ├── cpp.py           #   CPU: C++/OpenMP 代码生成
            └── wrapper.py       #   调用包装器
 
-这个布局本身就是架构的反映：**三个目录对应三个组件，目录之间的调用链就是编译流水线**。
+这个布局本身就是架构的反映：**三个目录对应三个组件，目录之间的调用链就是编译流水线 ** 。
 
 一次完整的编译调用链
 ============================
 
-从用户调用 ``compiled_fn = torch.compile(fn)`` 开始，到真正执行 ``compiled_fn(x)``，完整的调用路径是这样的：
+从用户调用 ``compiled_fn = torch.compile(fn)`` 开始，到真正执行 ``compiled_fn(x)`` ，完整的调用路径是这样的：
 
 第一步：torch.compile 注册帧拦截
 ---------------------------------------
@@ -126,9 +126,9 @@
 
 这行代码实际上做了什么？我们查看源码入口。
 
-``torch.compile`` （位于 ``torch/compiler/__init__.py``）最终调用到 ``torch._dynamo.optimize()``，它的核心作用是**注册一个帧拦截回调**到 CPython 解释器。
+``torch.compile`` （位于 ``torch/compiler/__init__.py`` ）最终调用到 ``torch._dynamo.optimize()`` ，它的核心作用是**注册一个帧拦截回调** 到 CPython 解释器。
 
-关键实现在 ``torch/_dynamo/eval_frame.py`` 中。Dynamo 通过 ``set_eval_frame`` 这个 C++ 扩展函数（定义在 ``torch/_C/_dynamo/eval_frame.cpp``），将自己挂入 CPython 的帧执行回调：
+关键实现在 ``torch/_dynamo/eval_frame.py`` 中。Dynamo 通过 ``set_eval_frame`` 这个 C++ 扩展函数（定义在 ``torch/_C/_dynamo/eval_frame.cpp`` ），将自己挂入 CPython 的帧执行回调：
 
 .. code-block:: python
    :caption: pytorch/torch/_dynamo/eval_frame.py（简化示意）
@@ -140,7 +140,7 @@
                # 注册帧拦截回调
                old_callback = set_eval_frame(_fn_to_frame_eval(backend))
                try:
-                   return fn(*args, **kwargs)
+                   return fn(*args,**kwargs)
                finally:
                    set_eval_frame(old_callback)
            return compiled_fn
@@ -206,9 +206,9 @@ PEP 523 是在 CPython 3.6 中引入的（`peps.python.org/pep-0523 <https://pep
 
 ``convert_frame`` 完成后，产生了三样东西：
 
-1. **FX Graph** —— 捕获到的计算图
-2. **Guards** —— 未来验证缓存是否有效的条件
-3. **Example inputs** —— 输入的 FakeTensor 样本
+1.**FX Graph**—— 捕获到的计算图
+2.**Guards**—— 未来验证缓存是否有效的条件
+3.**Example inputs** —— 输入的 FakeTensor 样本
 
 这三样东西被传递给 Dynamo 的后端调度器。调度器在 ``torch/_dynamo/backends/registry.py`` 中根据用户指定的 ``backend`` 名称查找对应的编译器函数：
 
@@ -225,7 +225,7 @@ PEP 523 是在 CPython 3.6 中引入的（`peps.python.org/pep-0523 <https://pep
        ▼
    进入 Inductor 主循环
 
-对于默认的 ``inductor`` 后端（定义在 ``torch/_dynamo/backends/inductor.py``），它会懒加载 ``torch._inductor.compile_fx``：
+对于默认的 ``inductor`` 后端（定义在 ``torch/_dynamo/backends/inductor.py`` ），它会懒加载 ``torch._inductor.compile_fx`` ：
 
 .. code-block:: python
    :caption: pytorch/torch/_dynamo/backends/inductor.py
@@ -233,7 +233,7 @@ PEP 523 是在 CPython 3.6 中引入的（`peps.python.org/pep-0523 <https://pep
    @register_backend
    def inductor(*args, **kwargs):
        from torch._inductor.compile_fx import compile_fx
-       return compile_fx(*args, **kwargs)
+       return compile_fx(*args,**kwargs)
 
 第四步：AOTAutograd 处理自动微分
 ----------------------------------------
@@ -267,14 +267,14 @@ PEP 523 是在 CPython 3.6 中引入的（`peps.python.org/pep-0523 <https://pep
        │
        └─ 4. 返回包装后的 forward_fn + backward_fn
 
-AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使用 ``torch.fx.experimental.proxy_tensor.make_fx`` 对 FX Graph 执行一次"假反向传播"——即用代理张量走一遍 autograd 流程，同时记录所有反向操作，生成一张包含前向和反向的**联合计算图**（joint graph）。
+AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使用 ``torch.fx.experimental.proxy_tensor.make_fx`` 对 FX Graph 执行一次"假反向传播"——即用代理张量走一遍 autograd 流程，同时记录所有反向操作，生成一张包含前向和反向的 ** 联合计算图**（joint graph）。
 
 然后 ``partitioners.py`` 中的 ``min_cut_rematerialization_partition`` 对这联合图进行切分：哪些计算在前向做、哪些在反向做、哪些在反向中重计算以节省显存。
 
 第五步：Inductor 接收分片后的子图
 ----------------------------------------
 
-每个子图（前向图、反向图）会独立进入 Inductor 的编译流程。入口是 ``torch/_inductor/compile_fx.py`` 中的 ``compile_fx_inner``：
+每个子图（前向图、反向图）会独立进入 Inductor 的编译流程。入口是 ``torch/_inductor/compile_fx.py`` 中的 ``compile_fx_inner`` ：
 
 .. code-block:: text
 
@@ -302,20 +302,20 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
               编译生成的 Triton/C++ 代码，
               返回一个可直接调用的函数
 
-``torch/_inductor/lowering.py`` 负责步骤 2：它维护了一张从 FX 操作到 Inductor IR 的映射表，每个 ``torch.sin``、``torch.cos`` 都会被翻译成对应的 ``IRNode``。我们会在第 5 章深入这部分的实现。
+``torch/_inductor/lowering.py`` 负责步骤 2：它维护了一张从 FX 操作到 Inductor IR 的映射表，每个 ``torch.sin`` 、 ``torch.cos`` 都会被翻译成对应的 ``IRNode`` 。我们会在第 5 章深入这部分的实现。
 
 ``torch/_inductor/scheduler.py`` 负责步骤 3：它分析 IRNode 之间的数据依赖，构建依赖图，然后通过启发式算法将可以融合的操作分组。融合后的组直接被发送给代码生成器。
 
 第六步：返回编译后的函数
 ----------------------------------------
 
-最终，Inductor 返回一个 ``CompiledFxGraph`` 对象（定义在 ``torch/_inductor/output_code.py``），它包含了：
+最终，Inductor 返回一个 ``CompiledFxGraph`` 对象（定义在 ``torch/_inductor/output_code.py`` ），它包含了：
 
 - 生成的 Triton kernel 代码
 - kernel launch 的包装函数
 - 缓存信息
 
-这个对象被包装成普通的 Python callable，返回给用户。以后每次调用 ``compiled_fn(x, y)``，都会：
+这个对象被包装成普通的 Python callable，返回给用户。以后每次调用 ``compiled_fn(x, y)`` ，都会：
 
 1. 检查 guard 是否通过
 2. 命中缓存，直接执行编译好的 kernel
@@ -358,7 +358,7 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
        Dynamo->>Dynamo: guard check → hit cache
        Dynamo-->>用户代码: 结果
 
-对应前面 "设计原则在本例中的体现" 的六条原则：序列图中的每一次箭头跨越，都对应一次阶段间的 IR 传递；而后续调用时 Dynamo 内部的 "guard check → hit cache" 则体现了 **编译重、运行轻** 和 **正确性优先**。
+对应前面 "设计原则在本例中的体现" 的六条原则：序列图中的每一次箭头跨越，都对应一次阶段间的 IR 传递；而后续调用时 Dynamo 内部的 "guard check → hit cache" 则体现了 ** 编译重、运行轻**和 ** 正确性优先** 。
 
 关键源代码入口速查
 ==========================
@@ -409,9 +409,9 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
 这一节我们追踪了一次完整的 torch.compile 调用链，从 ``torch.compile()`` 注册帧拦截，到 Dynamo 捕获 FX Graph，再到 AOTAutograd 联合求导和图分区，最后 Inductor 降级和代码生成。关键要点：
 
 - Dynamo 通过 **PEP 523** 在字节码层级拦截帧执行
-- **符号执行引擎** 用 FakeTensor 模拟 Tensor 操作，同时构建 FX Graph
-- **三阶段流水线** （Dynamo → AOTAutograd → Inductor）松耦合，每阶段可独立替换
-- **六条设计原则** （见上文）贯穿三大组件，是理解各章实现细节的纲
-- **编译结果被缓存**，后续调用直接命中缓存跳过编译
+- **符号执行引擎 ** 用 FakeTensor 模拟 Tensor 操作，同时构建 FX Graph
+- **三阶段流水线 ** （Dynamo → AOTAutograd → Inductor）松耦合，每阶段可独立替换
+- **六条设计原则 ** （见上文）贯穿三大组件，是理解各章实现细节的纲
+- **编译结果被缓存** ，后续调用直接命中缓存跳过编译
 
 下一节我们换个视角，看看编译过程中数据（张量）和控制流在不同组件之间是如何流转的。后面 2.4 节还会专题讨论贯穿三个组件的编译缓存架构。

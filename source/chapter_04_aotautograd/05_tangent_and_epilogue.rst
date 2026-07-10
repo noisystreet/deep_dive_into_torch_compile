@@ -4,12 +4,12 @@
 Tangent 与 Epilogue
 ======================
 
-这一节我们来看 AOTAutograd 中两个与反向传播边界相关的概念：**tangent** （反向传播的起始梯度）和 **epilogue** （前向/反向的收尾操作）。
+这一节我们来看 AOTAutograd 中两个与反向传播边界相关的概念： **tangent** （反向传播的起始梯度）和 **epilogue** （前向/反向的收尾操作）。
 
 Tangent：反向传播的起始梯度
 ===================================
 
-在联合图的创建过程中，``create_joint`` 除了接收前向输入 ``primals`` 之外，还接收另一组输入：**tangents**。
+在联合图的创建过程中， ``create_joint`` 除了接收前向输入 ``primals`` 之外，还接收另一组输入： **tangents** 。
 
 .. code-block:: python
 
@@ -21,11 +21,11 @@ Tangent：反向传播的起始梯度
 
 tangent 的概念在联合图中扮演了两个角色：
 
-1. **联合图中的占位符**：``tangent`` 节点在联合图中作为反向子图的输入占位符出现。它们标记了反向传播从哪里开始。
+1. **联合图中的占位符 ** ： ``tangent`` 节点在联合图中作为反向子图的输入占位符出现。它们标记了反向传播从哪里开始。
 
-2. **反向子图的第一个输入**：在分区之后，反向子图将 tangents 作为第一个输入（紧随 saved tensors 之后）。
+2.**反向子图的第一个输入** ：在分区之后，反向子图将 tangents 作为第一个输入（紧随 saved tensors 之后）。
 
-在一个典型的训练场景中，如果 loss 是 ``output.sum()``，tangent 就是一个形状为 ``()`` 的标量张量，值为 1.0。
+在一个典型的训练场景中，如果 loss 是 ``output.sum()`` ，tangent 就是一个形状为 ``()`` 的标量张量，值为 1.0。
 
 tangent_mask：哪些输出需要 tangent？
 ========================================
@@ -39,7 +39,7 @@ tangent_mask：哪些输出需要 tangent？
        y_saved = y.detach()  # 输出 2：不需要梯度（反向不需要）
        return y, y_saved
 
-``create_joint`` 在追踪前向时维护了一个 ``tangent_mask``：
+``create_joint`` 在追踪前向时维护了一个 ``tangent_mask`` ：
 
 .. code-block:: python
 
@@ -49,7 +49,7 @@ tangent_mask：哪些输出需要 tangent？
 
 只有 ``tangent_mask == True`` 的输出才会参与 ``autograd.grad`` 调用。在联合图中，这些输出的梯度被计算，而其他输出被忽略。
 
-在 ``schemas.py`` 的 ``ViewAndMutationMeta`` 中，``traced_tangents`` 字段保存了这些信息：
+在 ``schemas.py`` 的 ``ViewAndMutationMeta`` 中， ``traced_tangents`` 字段保存了这些信息：
 
 .. code-block:: python
 
@@ -63,13 +63,13 @@ tangent_mask：哪些输出需要 tangent？
 Epilogue：收尾操作
 =========================
 
-Epilogue 指的是**在完整训练迭代中、反向传播完成后需要执行的额外操作**。AOTAutograd 的 epilogue 机制处理三类场景：
+Epilogue 指的是 **在完整训练迭代中、反向传播完成后需要执行的额外操作 ** 。AOTAutograd 的 epilogue 机制处理三类场景：
 
 1. 将梯度更新写回参数
 2. 应用梯度裁剪
 3. 处理 optimizer step
 
-但在 AOTAutograd 的上下文中，"epilogue" 更具体地指**前向图末尾的一些额外操作**。
+但在 AOTAutograd 的上下文中，"epilogue" 更具体地指**前向图末尾的一些额外操作** 。
 
 前向 epilogue
 -------------------
@@ -101,7 +101,7 @@ Epilogue 指的是**在完整训练迭代中、反向传播完成后需要执行
 AOTDispatchAutograd 中的 epilogue 处理
 =============================================
 
-``AOTDispatchAutograd``（在 ``runtime_wrappers.py`` 中）是实现 epilogue 的关键类。它在运行时管理前向和反向的执行：
+``AOTDispatchAutograd`` （在 ``runtime_wrappers.py`` 中）是实现 epilogue 的关键类。它在运行时管理前向和反向的执行：
 
 .. code-block:: python
    :caption: pytorch/torch/_functorch/_aot_autograd/runtime_wrappers.py（简化示意）
@@ -222,17 +222,17 @@ AOTAutograd 在 PyTorch 编译栈中扮演着"中间层"的角色，它接收 Dy
 
 .. note::
 
-   **AOTAutograd 输出的图已经是"干净的"基本算子图。** 经过功能化和分解后，输出给 Inductor 的子图中不再包含 in-place 操作和高层算子（如 ``layer_norm``、``softmax``）。Inductor 可以直接对这些基本算子进行 lowering，不需要再处理功能化或分解的逻辑。
+   **AOTAutograd 输出的图已经是"干净的"基本算子图。 ** 经过功能化和分解后，输出给 Inductor 的子图中不再包含 in-place 操作和高层算子（如 ``layer_norm`` 、 ``softmax`` ）。Inductor 可以直接对这些基本算子进行 lowering，不需要再处理功能化或分解的逻辑。
 
 小结
 ======
 
 这一节介绍了 tangent 和 epilogue 的概念：
 
-- **Tangent**：反向传播的起始梯度，是联合图中反向子图的输入占位符
-- **tangent_mask**：区分哪些前向输出需要参与反向传播
-- **前向 epilogue**：前向中需要额外返回的、用于反向的值（如修改后的输入）
-- **运行时 epilogue**：``AOTDispatchAutograd`` 管理前向/反向的执行流和 saved tensors 传递
+- **Tangent** ：反向传播的起始梯度，是联合图中反向子图的输入占位符
+- **tangent_mask** ：区分哪些前向输出需要参与反向传播
+- **前向 epilogue** ：前向中需要额外返回的、用于反向的值（如修改后的输入）
+- **运行时 epilogue** ： ``AOTDispatchAutograd`` 管理前向/反向的执行流和 saved tensors 传递
 
 至此，第 4 章的内容全部完成。我们从联合求导开始，走过了图分区、min-cut 重计算、functionalization、以及 tangent/epilogue，覆盖了 AOTAutograd 的完整工作流程。
 

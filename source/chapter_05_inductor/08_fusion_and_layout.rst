@@ -11,7 +11,7 @@
 
 根据 IRNode 的类型组合，Scheduler 使用不同的融合策略：
 
-**Pointwise + Pointwise**：最高优先级的融合。两个逐元素操作共享相同的循环范围和设备，可以安全地合并。这是最常见的融合模式。
+**Pointwise + Pointwise** ：最高优先级的融合。两个逐元素操作共享相同的循环范围和设备，可以安全地合并。这是最常见的融合模式。
 
 .. code-block:: text
 
@@ -23,7 +23,7 @@
        Kernel 1: sin(x) → cos(sin(x)) → output
        # 中间结果 buf1 在寄存器中传递，不写回显存
 
-**Pointwise + Reduction**：有条件融合。Reduction 的输出形状小于 Pointwise 的输出，融合时需要特殊处理——通常将 Pointwise 的计算内联到 Reduction 的循环体中。
+**Pointwise + Reduction** ：有条件融合。Reduction 的输出形状小于 Pointwise 的输出，融合时需要特殊处理——通常将 Pointwise 的计算内联到 Reduction 的循环体中。
 
 .. code-block:: text
 
@@ -39,14 +39,14 @@
            accumulator += val
        store(output, accumulator)
 
-**Reduction + Reduction**：根据归约维度的兼容性决定。如果两个 Reduction 的归约维度相同，可以合并为一个 kernel。
+**Reduction + Reduction** ：根据归约维度的兼容性决定。如果两个 Reduction 的归约维度相同，可以合并为一个 kernel。
 
-**TemplateBuffer + Pointwise**：TemplateBuffer（如矩阵乘法）的输出可以与后续的 Pointwise 操作融合。这在 attention 的 forward 中非常常见：``softmax(scores @ V)`` 中的 ``scores @ V`` 是 GEMM template，后面的乘法是 pointwise。
+**TemplateBuffer + Pointwise** ：TemplateBuffer（如矩阵乘法）的输出可以与后续的 Pointwise 操作融合。这在 attention 的 forward 中非常常见： ``softmax(scores @ V)`` 中的 ``scores @ V`` 是 GEMM template，后面的乘法是 pointwise。
 
 Fusion Regions
 ====================
 
-Inductor 中还有一套更先进的融合框架叫做 **Fusion Regions** （位于 ``fx_passes/fusion_regions.py``）。它在 FX Graph 级别就进行融合规划，而不是等到 IRNode 级别。
+Inductor 中还有一套更先进的融合框架叫做 **Fusion Regions** （位于 ``fx_passes/fusion_regions.py`` ）。它在 FX Graph 级别就进行融合规划，而不是等到 IRNode 级别。
 
 Fusion regions 的思路是：
 
@@ -61,7 +61,7 @@ Fusion regions 的思路是：
 
 除了操作融合，Inductor 还通过布局优化来减少内存访问开销。
 
-**内存布局的重要性**：在 GPU 上，全局内存的访问模式直接影响 kernel 的性能。连续内存访问可以利用 GPU 的内存合并（memory coalescing）特性，每次内存事务传输 128 字节。不连续的访问则会导致多次独立的事务，降低有效带宽。
+**内存布局的重要性 ** ：在 GPU 上，全局内存的访问模式直接影响 kernel 的性能。连续内存访问可以利用 GPU 的内存合并（memory coalescing）特性，每次内存事务传输 128 字节。不连续的访问则会导致多次独立的事务，降低有效带宽。
 
 Inductor 的 ``ir.py`` 中定义了多种布局类型：
 
@@ -94,7 +94,7 @@ Inductor 的 ``ir.py`` 中定义了多种布局类型：
 自动调优：max-autotune 模式下的融合
 ===========================================
 
-在 ``max-autotune`` 模式下，Inductor 会做更激进的融合试探。``fuse_if_speedup`` 方法会：
+在 ``max-autotune`` 模式下，Inductor 会做更激进的融合试探。 ``fuse_if_speedup`` 方法会：
 
 1. 假设融合后生成一个 kernel
 2. 估算融合后的运行时间（基于硬件模型或 benchmark）
@@ -124,7 +124,7 @@ Inductor 的 ``ir.py`` 中定义了多种布局类型：
 
 这一节介绍了融合与布局优化的具体策略：
 
-- **三种融合模式**：Pointwise+Pointwise、Pointwise+Reduction、TemplateBuffer+Pointwise
-- **Fusion Regions**：在 FX Graph 级别预先规划融合区域
-- **布局优化**：通过 ``FlexibleLayout`` 让 codegen 选择最优内存布局
-- **max-autotune 融合**：基于运行时基准测试的融合决策
+- **三种融合模式 ** ：Pointwise+Pointwise、Pointwise+Reduction、TemplateBuffer+Pointwise
+- **Fusion Regions** ：在 FX Graph 级别预先规划融合区域
+- **布局优化 ** ：通过 ``FlexibleLayout`` 让 codegen 选择最优内存布局
+- **max-autotune 融合** ：基于运行时基准测试的融合决策

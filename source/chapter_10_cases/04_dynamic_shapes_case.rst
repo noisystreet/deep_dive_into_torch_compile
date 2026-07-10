@@ -11,7 +11,7 @@
 
 在 NLP 中，不同句子的长度不同。批处理时有两种策略：
 
-**策略 A：Padding 到固定长度**
+**策略 A：Padding 到固定长度 **
 
 .. code-block:: python
 
@@ -26,7 +26,7 @@
            padded.append(seq)
        return torch.stack(padded), torch.tensor([l for _, l in batch])
 
-**策略 B：Batch 内 Padding（不跨 batch 固定）**
+** 策略 B：Batch 内 Padding（不跨 batch 固定）**
 
 .. code-block:: python
 
@@ -127,7 +127,7 @@
 特殊处理数据依赖的形状
 ==========================
 
-有些操作的输出形状取决于输入数据（如 ``torch.nonzero``、``torch.unique``），这些操作会导致 "数据依赖的形状"——编译器无法在编译时确定输出形状。
+有些操作的输出形状取决于输入数据（如 ``torch.nonzero`` 、 ``torch.unique`` ），这些操作会导致 "数据依赖的形状"——编译器无法在编译时确定输出形状。
 
 .. code-block:: python
 
@@ -137,7 +137,7 @@
        indices = torch.nonzero(mask)  # 输出形状取决于 x 的值
        return indices
 
-这些操作会强制生成一个 graph break（因为输出形状无法在编译时确定），``torch.nonzero`` 之后的代码在 eager 模式下执行。
+这些操作会强制生成一个 graph break（因为输出形状无法在编译时确定）， ``torch.nonzero`` 之后的代码在 eager 模式下执行。
 
 如果必须使用数据依赖形状的操作，推荐的方案是：
 
@@ -176,7 +176,7 @@
 重新编译与 Padding 浪费的权衡
 ================================================
 
-动态形状场景的核心矛盾在于：**Padding 浪费计算资源，重新编译浪费编译时间**。下面的决策树展示了不同场景下的最优选择：
+动态形状场景的核心矛盾在于： **Padding 浪费计算资源，重新编译浪费编译时间** 。下面的决策树展示了不同场景下的最优选择：
 
 .. mermaid::
 
@@ -277,7 +277,7 @@ Export + Dynamic Shapes 的优化效果
        输入形状 (8, 128, 768) → 同一个通用 kernel
        总编译时间: ~20 秒 (1 次编译)
 
-需要注意的是，``export`` 生成的图是静态的——它不支持控制流（如 ``if`` 依赖 tensor 值）。如果你的模型包含动态控制流，需要使用 ``torch.export.Dim`` 的 ``dynamic=True`` 配合 ``torch.cond`` 或 ``torch.map``。
+需要注意的是， ``export`` 生成的图是静态的——它不支持控制流（如 ``if`` 依赖 tensor 值）。如果你的模型包含动态控制流，需要使用 ``torch.export.Dim`` 的 ``dynamic=True`` 配合 ``torch.cond`` 或 ``torch.map`` 。
 
 Guard 调试实战：TORCH_LOGS 输出分析
 ===============================================
@@ -347,7 +347,7 @@ Guard 调试实战：TORCH_LOGS 输出分析
    [__recompiles]                        (1, 64, 768), (1, 80, 768),
    [__recompiles]                        (1, 96, 768), ...]
 
-如果 ``recompiles`` 数量很大（如 > 100），说明形状变化过于频繁，强烈建议使用 ``dynamic=True`` 或 ``mark_dynamic``。
+如果 ``recompiles`` 数量很大（如 > 100），说明形状变化过于频繁，强烈建议使用 ``dynamic=True`` 或 ``mark_dynamic`` 。
 
 .. note::
 
@@ -454,4 +454,4 @@ Guard 调试实战：TORCH_LOGS 输出分析
 
 .. tip::
 
-   在生产环境中监控重新编译时，关注的是**编译时间占比**而非绝对编译次数。对于一个运行 7x24 小时的服务，偶尔的重新编译（每小时几次）是可以接受的。但如果编译时间占总运行时间的 5% 以上，就需要优化动态形状配置了。
+   在生产环境中监控重新编译时，关注的是 **编译时间占比** 而非绝对编译次数。对于一个运行 7x24 小时的服务，偶尔的重新编译（每小时几次）是可以接受的。但如果编译时间占总运行时间的 5% 以上，就需要优化动态形状配置了。

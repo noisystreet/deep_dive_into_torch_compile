@@ -68,7 +68,7 @@ PyTorch 提供了 ``torch.library`` API 来注册自定义算子：
    def quadruple_decomp(x):
        return x * 4  # 展开为 aten.mul
 
-这样 Inductor 在 lowering 时看到的是 ``aten.mul``，可以直接处理。
+这样 Inductor 在 lowering 时看到的是 ``aten.mul`` ，可以直接处理。
 
 **注册 Lowering**
 
@@ -92,7 +92,7 @@ PyTorch 提供了 ``torch.library`` API 来注册自定义算子：
            ranges=x.get_size(),
        )
 
-**注册 Fallback**
+** 注册 Fallback**
 
 对于无法分解也无法单独 lowering 的算子，可以注册 fallback 让它回退到 eager：
 
@@ -160,13 +160,13 @@ PyTorch 提供了 ``torch.library`` API 来注册自定义算子：
 使用 torch.library 注册自定义算子的最佳实践
 ===================================================
 
-1. **总是标记 pt2_compliant_tag**。如果算子符合 torch.compile 的约束（纯函数式、无 side effect），加上这个标签可以确保编译流畅。
+1. **总是标记 pt2_compliant_tag** 。如果算子符合 torch.compile 的约束（纯函数式、无 side effect），加上这个标签可以确保编译流畅。
 
-2. **优先提供 decomposition**。decomposition 让 Inductor 可以自动优化算子内部的算术操作。
+2.**优先提供 decomposition** 。decomposition 让 Inductor 可以自动优化算子内部的算术操作。
 
-3. **为性能关键路径提供 Triton kernel**。如果 decomposition 生成的代码效率不够，手写 Triton kernel 可以获得最佳性能。
+3.**为性能关键路径提供 Triton kernel** 。如果 decomposition 生成的代码效率不够，手写 Triton kernel 可以获得最佳性能。
 
-4. **测试 eager 和 compiled 模式的一致性**：
+4.**测试 eager 和 compiled 模式的一致性** ：
 
    .. code-block:: python
 

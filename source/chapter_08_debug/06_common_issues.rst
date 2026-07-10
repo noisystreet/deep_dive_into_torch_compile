@@ -6,7 +6,7 @@
 
 .. tip::
 
-   **近 20% 的 Inductor 提交是在修 Bug——这说明踩坑是常态。**
+   **近 20% 的 Inductor 提交是在修 Bug——这说明踩坑是常态。 **
    在 Inductor 的 8,787 次提交中，明确标注为 bug fix 的约 1,709 次（19.5%）。再加上 1,012 次 revert（11.5%），超过 30% 的提交是在"解决问题"。这反映了一个现实：torch.compile 是一个复杂度极高的编译器项目，你不一定每次都能顺利跑通。遇到问题时，日志系统和 minimizer 是你最强的盟友——它们被设计出来就是为了应对这些 bug 的。团队在 PyTorch 2.2 中统一了 ``TORCH_LOGS`` 日志系统，在 2.5 中引入了区域编译以减少重新编译时的 bug 触发概率。但编译器 bug 永远不会消失——唯一能做的是让调试工具更好用。
 
 这一节汇总使用 torch.compile 时最常见的错误和问题，以及对应的解决方法。
@@ -61,7 +61,7 @@
 结果不一致
 ============
 
-**编译结果与 eager 模式结果不同**
+** 编译结果与 eager 模式结果不同 **
 
 当编译后的输出与 eager 模式的输出存在差异时（精度问题）：
 
@@ -71,23 +71,23 @@
 
 这会生成最小复现脚本。常见原因：
 
-1. **浮点精度差异**：Triton 和 CUDA 的归约顺序可能不同，导致微小差异。这是正常的，通常差异在 1e-6 级别。如果差异过大，检查是否误用了 ``tf32`` 或 ``fp16``。
+1.** 浮点精度差异 **：Triton 和 CUDA 的归约顺序可能不同，导致微小差异。这是正常的，通常差异在 1e-6 级别。如果差异过大，检查是否误用了 ``tf32`` 或 ``fp16`` 。
 
-2. **随机数生成差异**：编译后的 dropout 等随机操作可能与 eager 模式顺序不同。设置相同的随机种子：
+2.** 随机数生成差异 **：编译后的 dropout 等随机操作可能与 eager 模式顺序不同。设置相同的随机种子：
 
    .. code-block:: python
 
       torch.manual_seed(42)
       torch.cuda.manual_seed_all(42)
 
-3. **In-place 操作语义**：功能化（functionalization）可能改变了 in-place 操作的语义。检查是否在编译图中正确处理了 in-place 操作的副作用。
+3.**In-place 操作语义 ** ：功能化（functionalization）可能改变了 in-place 操作的语义。检查是否在编译图中正确处理了 in-place 操作的副作用。
 
 性能比 Eager 还差
 ====================
 
-**首次运行很慢** （正常）。编译本身有开销。首轮训练通常比 eager 慢，后续轮次会更快。
+**首次运行很慢 ** （正常）。编译本身有开销。首轮训练通常比 eager 慢，后续轮次会更快。
 
-**Graph break 过多**。如果模型中有大量 graph break，编译后的性能可能不如 eager：
+**Graph break 过多 ** 。如果模型中有大量 graph break，编译后的性能可能不如 eager：
 
 .. code-block:: bash
 
@@ -105,7 +105,7 @@
 - 使用 ``fullgraph=True`` 强制无 graph break
 - 将 graph break 的代码用 ``torch.compiler.disable`` 隔离
 
-**Kernel launch 开销过大**。如果 Inductor 生成了大量小 kernel：
+**Kernel launch 开销过大 ** 。如果 Inductor 生成了大量小 kernel：
 
 .. code-block:: bash
 
@@ -117,7 +117,7 @@
 
    torch._inductor.config.max_fusion_size = 10
 
-**内存不足（OOM）**。编译后可能使用更多显存（因为保存了中间结果用于反向）。尝试：
+**内存不足（OOM）** 。编译后可能使用更多显存（因为保存了中间结果用于反向）。尝试：
 
 .. code-block:: python
 
@@ -247,7 +247,7 @@ CUDA Graph 捕获失败
      - 表现
      - 解决方案
    * - CPU 同步操作
-     - ``.item()``、``.cpu()``、``.numpy()``
+     - ``.item()`` 、 ``.cpu()`` 、 ``.numpy()``
      - 移出编译图
    * - 动态控制流
      - ``if tensor.item() > 0:``
@@ -259,7 +259,7 @@ CUDA Graph 捕获失败
      - ``torch.cuda.synchronize()``
      - 移出编译区域
    * - 设备间传输
-     - ``tensor.cuda()``、``tensor.cpu()``
+     - ``tensor.cuda()`` 、 ``tensor.cpu()``
      - 统一设备
 
 诊断 CUDA Graph 失败
@@ -313,11 +313,11 @@ mode="reduce-overhead" 与 CUDA Graph 的关系
        "max_autotune": False,
    })
 
-当 CUDA Graph 捕获失败时，``reduce-overhead`` 模式会自动回退到常规 kernel launch，优化效果会打折扣。
+当 CUDA Graph 捕获失败时， ``reduce-overhead`` 模式会自动回退到常规 kernel launch，优化效果会打折扣。
 
 .. note::
 
-   **CUDA Graph 回退是透明的**。
+   **CUDA Graph 回退是透明的 ** 。
    即使 ``mode="reduce-overhead"`` 下的 CUDA Graph 捕获失败，模型仍然能正常运行——只是退回到常规的 kernel launch 路径，性能提升幅度会减小。你不会看到明显的错误信息，但性能可能不如预期。此时检查 ``cuda_graphs`` 日志就能发现问题。
 
 Export 模式下的常见问题
@@ -359,7 +359,7 @@ Export 模式下的常见问题
    decompositions = get_decompositions([aten._unsafe_view])
    exported = torch.export.export(model, args, decompositions=decompositions)
 
-**错误 2：动态形状导致的 export 失败**
+** 错误 2：动态形状导致的 export 失败 **
 
 .. code-block:: text
 
@@ -376,7 +376,7 @@ Export 模式下的常见问题
    }
    exported = torch.export.export(model, (x,), dynamic_shapes=dynamic_shapes)
 
-**错误 3：Control flow 不支持**
+** 错误 3：Control flow 不支持**
 
 .. code-block:: text
 
@@ -450,9 +450,9 @@ Cache Poisoning（缓存中毒）
 
 缓存中毒很少见，但可能在以下情况发生：
 
-1. **全局状态被修改**：编译时假设的全局状态在运行时被改变
-2. **张量的元数据变化但 guard 没有捕获**：如 ``requires_grad`` 变化
-3. **自定义 Python 对象的相等性判断异常**：``__eq__`` 实现不正确
+1. **全局状态被修改 ** ：编译时假设的全局状态在运行时被改变
+2.**张量的元数据变化但 guard 没有捕获 ** ：如 ``requires_grad`` 变化
+3.**自定义 Python 对象的相等性判断异常** ： ``__eq__`` 实现不正确
 
 如何清除和失效缓存
 ---------------------------
@@ -581,9 +581,9 @@ AMP 和 torch.compile 的配合需要特别注意顺序：
 
 AMP 与 compile 配合时的常见问题：
 
-1. **精度不匹配**：某些操作在 FP16 下精度不足，编译后可能放大误差
-2. **Loss scaling 失效**：编译后的 autograd 可能改变梯度 scale 的行为
-3. **Dynamic shapes + AMP**：同时启用时，Triton 生成的 kernel 需要同时处理数据类型转换和符号形状，可能降低融合效率
+1. **精度不匹配 ** ：某些操作在 FP16 下精度不足，编译后可能放大误差
+2.**Loss scaling 失效 ** ：编译后的 autograd 可能改变梯度 scale 的行为
+3.**Dynamic shapes + AMP** ：同时启用时，Triton 生成的 kernel 需要同时处理数据类型转换和符号形状，可能降低融合效率
 
 .. code-block:: python
 
@@ -648,7 +648,7 @@ BF16 vs FP16 vs FP32 的考量
 
 .. warning::
 
-   **FP16 下的梯度下溢**。
+   **FP16 下的梯度下溢 ** 。
    使用 FP16 + torch.compile 时，如果损失函数很小（如 < 1e-3），梯度可能在 FP16 下溢为零。此时应该使用 BF16 或开启 loss scaling。BF16 保留了与 FP32 相同的指数位，因此不存在下溢问题。
 
 Inductor 特定错误
@@ -713,9 +713,9 @@ MaxAutotune 失败
 
 常见原因：
 
-1. **显存不足**：max-autotune 需要额外显存来并行基准测试多个 kernel 变体
-2. **编译超时**：某些 kernel 的 autotune 空间过大
-3. **Triton 编译错误**：autotune 生成的某些 kernel 变体无法通过 Triton 编译
+1.**显存不足 ** ：max-autotune 需要额外显存来并行基准测试多个 kernel 变体
+2.**编译超时 ** ：某些 kernel 的 autotune 空间过大
+3.**Triton 编译错误 ** ：autotune 生成的某些 kernel 变体无法通过 Triton 编译
 
 解决方案：
 
@@ -734,7 +734,7 @@ MaxAutotune 失败
 
 .. note::
 
-   **MaxAutotune 失败是透明的**。
+**MaxAutotune 失败是透明的** 。
    如果某个 kernel 的 autotune 失败，Inductor 会回退到 heuristic 的 tiling 选择。模型仍然可以正常运行，只是该 kernel 的性能可能未达最优。你不会看到红色错误，而是在日志中看到一条回退消息。
 
 Pattern Matcher 失败

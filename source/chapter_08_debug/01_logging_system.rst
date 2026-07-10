@@ -6,8 +6,8 @@
 
 .. tip::
 
-   **"TORCH_LOGS=+all" 的输出量有多大？**
-   对于 ResNet50 的一次前向传播，``TORCH_LOGS=+all`` 可以产生超过 10 万行日志。这意味着编译全流程中会触发大量细粒度的调试信息。实践中真正需要的是**精细化的日志控制**——例如只想看 Inductor 的融合决策，就写 ``TORCH_LOGS=+schedule,+inductor``，而不是打开所有模块。这也是日志系统设计为模块化的原因：你可以像搭积木一样自由组合需要的日志模块。
+   **"TORCH_LOGS=+all" 的输出量有多大？ **
+   对于 ResNet50 的一次前向传播， ``TORCH_LOGS=+all`` 可以产生超过 10 万行日志。这意味着编译全流程中会触发大量细粒度的调试信息。实践中真正需要的是** 精细化的日志控制**——例如只想看 Inductor 的融合决策，就写 ``TORCH_LOGS=+schedule,+inductor`` ，而不是打开所有模块。这也是日志系统设计为模块化的原因：你可以像搭积木一样自由组合需要的日志模块。
 
 torch.compile 提供了全面且可配置的日志系统，用于追踪编译流水线的每个环节。理解日志系统是高效调试的第一步。
 
@@ -77,7 +77,7 @@ TORCH_LOGS 环境变量
 日志输出示例
 ==================
 
-**Dynamo 日志**：显示 graph break 的位置：
+**Dynamo 日志 ** ：显示 graph break 的位置：
 
 .. code-block:: text
 
@@ -86,7 +86,7 @@ TORCH_LOGS 环境变量
    [dynamo] 生成子图 #0 (3 个节点)
    [dynamo] 生成子图 #1 (5 个节点)
 
-**Inductor 日志**：显示 lowering 和融合过程：
+**Inductor 日志 ** ：显示 lowering 和融合过程：
 
 .. code-block:: text
 
@@ -94,7 +94,7 @@ TORCH_LOGS 环境变量
    [inductor] lowering aten.cos (fx_node: %cos)
    [inductor] Pointwise + Pointwise 融合成功
 
-**输出代码日志**：显示生成的 Triton kernel：
+**输出代码日志 ** ：显示生成的 Triton kernel：
 
 .. code-block:: bash
 
@@ -150,7 +150,7 @@ TorchDynamo 日志系统的实现
    ├── _registrations.py    # 注册日志模块名到 logger 的映射
    └── _internal.py         # 日志格式化和过滤逻辑
 
-``TORCH_LOGS`` 的值在 ``_registrations.py`` 中解析，将模块名映射到对应的 ``logging.getLogger(name)``，然后设置对应 logger 的级别。
+``TORCH_LOGS`` 的值在 ``_registrations.py`` 中解析，将模块名映射到对应的 ``logging.getLogger(name)`` ，然后设置对应 logger 的级别。
 
 对于 Inductor，日志通过 ``getArtifactLogger`` 获取：
 
@@ -196,17 +196,17 @@ TorchDynamo 日志系统的实现
    ├── _internal.py         # 日志格式化、ArtifactLogger 实现、过滤逻辑
    └── _handlers.py         # 自定义日志处理器
 
-- ``__init__.py``：导出 ``getArtifactLogger`` 和 ``set_logs`` 等公共 API
-- ``_registrations.py``：维护模块名与 Logger 名的对应关系，解析 ``TORCH_LOGS`` 环境变量的值
-- ``_internal.py``：实现 ``ArtifactLogger`` 类，继承自 ``logging.Logger``，添加了 artifact 过滤能力
-- ``_handlers.py``：提供将日志输出到文件的自定义处理器
+- ``__init__.py`` ：导出 ``getArtifactLogger`` 和 ``set_logs`` 等公共 API
+- ``_registrations.py`` ：维护模块名与 Logger 名的对应关系，解析 ``TORCH_LOGS`` 环境变量的值
+- ``_internal.py`` ：实现 ``ArtifactLogger`` 类，继承自 ``logging.Logger`` ，添加了 artifact 过滤能力
+- ``_handlers.py`` ：提供将日志输出到文件的自定义处理器
 
 getArtifactLogger 与标准 Python logging 的区别
 --------------------------------------------------
 
-标准 Python logging 通过 ``logging.getLogger(name)`` 获取 Logger，其中 ``name`` 通常是模块的 ``__name__``。Logger 的层级关系由名称中的点号分隔决定——例如 ``torch._inductor.scheduler`` 是 ``torch._inductor`` 的子 Logger。
+标准 Python logging 通过 ``logging.getLogger(name)`` 获取 Logger，其中 ``name`` 通常是模块的 ``__name__`` 。Logger 的层级关系由名称中的点号分隔决定——例如 ``torch._inductor.scheduler`` 是 ``torch._inductor`` 的子 Logger。
 
-``getArtifactLogger`` 在这之上添加了一个 **artifact 维度**：
+``getArtifactLogger`` 在这之上添加了一个**artifact 维度 ** ：
 
 .. code-block:: python
 
@@ -223,7 +223,7 @@ getArtifactLogger 与标准 Python logging 的区别
 区别在于：
 
 - 标准 Logger 的级别由 Logger 名称的层级决定，父子 Logger 之间通过 propagate 传递日志
-- ``getArtifactLogger`` 创建的 Logger 额外绑定了一个 **artifact 名称**，这个名称独立于模块层级
+- ``getArtifactLogger`` 创建的 Logger 额外绑定了一个**artifact 名称 ** ，这个名称独立于模块层级
 - 同一个模块可以有多个 artifact Logger，各自有独立的开关控制
 
 日志级别的层级传播
@@ -255,7 +255,7 @@ getArtifactLogger 与标准 Python logging 的区别
 配置日志系统的实用技巧
 -------------------------------
 
-除了通过 ``TORCH_LOGS`` 环境变量，还可以在代码中**程序化地配置日志系统**：
+除了通过 ``TORCH_LOGS`` 环境变量，还可以在代码中**程序化地配置日志系统** ：
 
 .. code-block:: python
 
@@ -277,7 +277,7 @@ getArtifactLogger 与标准 Python logging 的区别
 .. note::
 
    ``torch._logging.set_logs`` 接受 ``logging.DEBUG`` 这样的标准日志级别常量，
-   也接受 ``True`` / ``False`` 这样的布尔值——``True`` 等价于 ``INFO`` 级别，``False`` 等价于 ``WARNING`` 级别。
+   也接受 ``True`` / ``False`` 这样的布尔值——``True`` 等价于 ``INFO`` 级别， ``False`` 等价于 ``WARNING`` 级别。
 
 程序化配置的主要优势：
 
@@ -288,7 +288,7 @@ getArtifactLogger 与标准 Python logging 的区别
 
 .. seealso::
 
-   完整的 ``set_logs`` API 文档见 ``torch/_logging/__init__.py``。
+   完整的 ``set_logs`` API 文档见 ``torch/_logging/__init__.py`` 。
    支持的参数列表对应 ``_registrations.py`` 中注册的所有 artifact 名称。
 
 小结
