@@ -39,10 +39,14 @@ PyTorch 内置了多个后端：
 
 通过 ``@torch.compiler.register_backend`` 装饰器注册：
 
-.. code-block:: python
+.. synced-code-start:: basic_backend
+
+   .. code-block:: python
+      :linenos:
 
    import torch
    from torch import fx
+
 
    @torch.compiler.register_backend
    def my_backend(gm: fx.GraphModule, example_inputs):
@@ -52,11 +56,17 @@ PyTorch 内置了多个后端：
            print(f"  {node.op}: {node.target}")
        return gm.forward  # 使用 eager 执行
 
+
    @torch.compile(backend="my_backend")
    def fn(x):
        return torch.sin(x) + torch.cos(x)
 
-   result = fn(torch.randn(3))
+
+   if __name__ == "__main__":
+       result = fn(torch.randn(3))
+       print("结果:", result)
+
+.. synced-code-end::
 
 运行输出：
 
@@ -78,62 +88,87 @@ PyTorch 内置了多个后端：
 
 以下是一个更完整的设计——将 FX Graph 序列化为 JSON 并发送到外部编译器：
 
-.. code-block:: python
+.. synced-code-start:: external_compiler
+
+   .. code-block:: python
+      :linenos:
 
    import json
    import torch
    import torch.fx as fx
 
+
    class ExternalCompiler:
        """模拟外部编译器"""
+
        def compile(self, graph_json):
            print(f"接收到图: {len(graph_json['nodes'])} 个节点")
            # 这里连接到真实的外部编译器
            return lambda *args: None
 
+
    compiler = ExternalCompiler()
+
 
    @torch.compiler.register_backend
    def external_backend(gm: fx.GraphModule, example_inputs):
        # 将 FX Graph 序列化为可 JSON 序列化的格式
        graph_json = {"nodes": []}
        for node in gm.graph.nodes:
-           graph_json["nodes"].append({
-               "name": node.name,
-               "op": node.op,
-               "target": str(node.target),
-               "args": [str(a) for a in node.args],
-           })
-       
+           graph_json["nodes"].append(
+               {
+                   "name": node.name,
+                   "op": node.op,
+                   "target": str(node.target),
+                   "args": [str(a) for a in node.args],
+               }
+           )
+
        # 发送到外部编译器
        compiled_fn = compiler.compile(graph_json)
        return compiled_fn
 
+
    @torch.compile(backend="external_backend")
-   def fn(x):
+   def fn_ext(x):
        return torch.sin(x) + torch.cos(x)
 
-   result = fn(torch.randn(3))
+
+   if __name__ == "__main__":
+       result = fn_ext(torch.randn(3))
+       print("结果:", result)
+
+.. synced-code-end::
 
 与 AOTAutograd 的交互
 ==========================
 
 如果后端需要处理 joint graph（即前向和反向未分区的图），可以通过 ``aot_autograd`` 的接口注册：
 
-.. code-block:: python
+.. synced-code-start:: aot_backend
+
+   .. code-block:: python
+      :linenos:
 
    from functorch.compile import min_cut_rematerialization_partition
+
 
    def my_compiler(gm, example_inputs):
        """处理 AOTAutograd 分区后的子图"""
        print(f"编译子图: {len(gm.graph.nodes)} 个节点")
        return gm.forward
 
+
    @torch.compile(backend=my_compiler)
-   def fn(x):
+   def fn_aot(x):
        return torch.sin(x) + torch.cos(x)
 
-   result = fn(torch.randn(3))
+
+   if __name__ == "__main__":
+       result = fn_aot(torch.randn(3))
+       print("结果:", result)
+
+.. synced-code-end::
 
 对于更复杂的场景，可以自定义 AOTAutograd 的分区策略：
 

@@ -54,5 +54,77 @@
         "rst": "source/chapter_10_cases/03_training_workflow.rst",
         "section": "trainer",
         "label": "CompiledTrainer 训练循环"
+    },
+    {
+        "py": "examples/custom_backend.py",
+        "rst": "source/chapter_09_advanced/01_custom_backend.rst",
+        "section": "basic_backend",
+        "label": "自定义后端基础"
+    },
+    {
+        "py": "examples/custom_backend.py",
+        "rst": "source/chapter_09_advanced/01_custom_backend.rst",
+        "section": "external_compiler",
+        "label": "外部编译器后端"
+    },
+    {
+        "py": "examples/custom_backend.py",
+        "rst": "source/chapter_09_advanced/01_custom_backend.rst",
+        "section": "aot_backend",
+        "label": "AOTAutograd 交互后端"
+    },
+    {
+        "py": "examples/custom_op.py",
+        "rst": "source/chapter_09_advanced/04_custom_op_and_kernel.rst",
+        "section": "define_op",
+        "label": "自定义算子注册"
+    },
+    {
+        "py": "examples/custom_op.py",
+        "rst": "source/chapter_09_advanced/04_custom_op_and_kernel.rst",
+        "section": "custom_grad",
+        "label": "自定义反向传播"
+    },
+    {
+        "py": "examples/custom_op.py",
+        "rst": "source/chapter_09_advanced/04_custom_op_and_kernel.rst",
+        "section": "decomposition",
+        "label": "注册 Decomposition"
+    },
+    {
+        "py": "examples/custom_op.py",
+        "rst": "source/chapter_09_advanced/04_custom_op_and_kernel.rst",
+        "section": "lowering",
+        "label": "注册 Lowering"
+    },
+    {
+        "py": "examples/custom_op.py",
+        "rst": "source/chapter_09_advanced/04_custom_op_and_kernel.rst",
+        "section": "fallback",
+        "label": "注册 Fallback"
+    },
+    {
+        "py": "examples/custom_op.py",
+        "rst": "source/chapter_09_advanced/04_custom_op_and_kernel.rst",
+        "section": "triton_kernel",
+        "label": "自定义 Triton Kernel"
+    },
+    {
+        "py": "examples/export_and_aot.py",
+        "rst": "source/chapter_09_advanced/05_export_and_aot_inductor.rst",
+        "section": "basic_export",
+        "label": "最小 export 示例"
+    },
+    {
+        "py": "examples/export_and_aot.py",
+        "rst": "source/chapter_09_advanced/05_export_and_aot_inductor.rst",
+        "section": "dynamic_shapes",
+        "label": "动态形状 export"
+    },
+    {
+        "py": "examples/export_and_aot.py",
+        "rst": "source/chapter_09_advanced/05_export_and_aot_inductor.rst",
+        "section": "aot_compile",
+        "label": "AOTInductor 编译导出"
     }
 ]

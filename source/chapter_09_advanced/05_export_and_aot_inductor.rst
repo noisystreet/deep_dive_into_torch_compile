@@ -37,13 +37,18 @@ torch.compile vs torch.export
 最小 export 示例
 ====================
 
-.. code-block:: python
+.. synced-code-start:: basic_export
+
+   .. code-block:: python
+      :linenos:
 
    import torch
+
 
    class M(torch.nn.Module):
        def forward(self, x):
            return torch.relu(x @ self.weight.T)
+
 
    model = M()
    model.weight = torch.nn.Parameter(torch.randn(10, 20))
@@ -54,9 +59,16 @@ torch.compile vs torch.export
    exported = torch.export.export(model, example_inputs)
    print(exported.graph_module)
 
+.. synced-code-end::
+
 ``export`` 会在 trace 阶段记录输入张量的形状，并生成对应的 guard 约束。如果某个维度需要支持变化，必须显式声明：
 
-.. code-block:: python
+.. synced-code-start:: dynamic_shapes
+
+   .. code-block:: python
+      :linenos:
+
+   import torch
 
    batch = torch.export.Dim("batch", min=1, max=1024)
    dynamic_shapes = {"x": {0: batch}}
@@ -66,6 +78,8 @@ torch.compile vs torch.export
        example_inputs,
        dynamic_shapes=dynamic_shapes,
    )
+
+.. synced-code-end::
 
 这里的 ``Dim`` 与第 3.8 节讨论的符号形状（symbolic shapes）共享同一套 ``ShapeEnv`` 基础设施——``export`` 在编译期就固定了哪些维度是符号化的，而不是像 ``torch.compile`` 那样在运行时通过 guard 失败来发现新形状。
 
@@ -94,26 +108,33 @@ AOTInductor 的典型输出包括：
 
 PyTorch 提供了 ``aot_compile`` API，在 export 的同时触发 AOTInductor 编译：
 
-.. code-block:: python
+.. synced-code-start:: aot_compile
+
+   .. code-block:: python
+      :linenos:
 
    import torch
 
-   class M(torch.nn.Module):
+
+   class M2(torch.nn.Module):
        def forward(self, x):
            return x.sin() + x.cos()
 
-   model = M()
-   example_inputs = (torch.randn(8, 16),)
+
+   model2 = M2()
+   example_inputs2 = (torch.randn(8, 16),)
 
    # 指定输出目录，Inductor 在此生成 .so 等产物
    so_path = torch._export.aot_compile(
-       model,
-       example_inputs,
+       model2,
+       example_inputs2,
        options={
            "aot_inductor.output_path": "/tmp/aot_model",
        },
    )
    print(so_path)
+
+.. synced-code-end::
 
 等价的配置方式是通过 ``torch._inductor.config`` ：
 
