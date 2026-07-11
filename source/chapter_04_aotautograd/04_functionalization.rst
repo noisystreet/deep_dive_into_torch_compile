@@ -79,16 +79,12 @@ to_fun 和 from_fun
 
 FunctionalTensor 是一个包装类（继承自 ``torch.Tensor`` ），它拦截所有 in-place 操作，将它们转换为 out-of-place 操作加上"版本号更新"：
 
-.. mermaid::
+.. figure:: /_static/figures/functional_tensor_flow.svg
+   :align: center
+   :alt: FunctionalTensor 拦截流程
+   :figwidth: 80%
 
-   flowchart TD
-       x["x = FunctionalTensor(tensor)"] --> add_["x.add_(1) ← 被拦截"]
-       add_ --> intercept["FunctionalTensor 内部处理"]
-       intercept --> step1["1. 读取 x 的当前值"]
-       step1 --> step2["2. 执行 out-of-place 的 torch.add(x, 1)"]
-       step2 --> step3["3. 将 x 的内部存储替换为计算结果"]
-       step3 --> step4["4. 递增版本号"]
-       step4 --> result["从外部看: x 的值被更新了<br/>FX Graph 记录: torch.add(x, 1)（out-of-place）"]
+   FunctionalTensor 拦截 x.add_(1)，将其拆解为读取 → out-of-place 计算 → 替换存储 → 递增版本号四步。
 
 从外部看， ``x.add_(1)`` 的效果和 eager 模式一致——``x`` 的值被更新了。但从图捕获的角度看，实际记录的 FX 操作是 ``torch.add(x, 1)`` （out-of-place），而不是 ``torch.add_(x, 1)`` 。
 

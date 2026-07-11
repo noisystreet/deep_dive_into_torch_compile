@@ -150,25 +150,12 @@ Profiling 工作流
 
 下面的流程图展示了完整的 profiling 工作流：
 
-.. mermaid::
+.. figure:: /_static/figures/profiling_workflow.svg
+   :align: center
+   :alt: Profiling 工作流
+   :figwidth: 100%
 
-   graph TD
-       A["编译函数<br/>@torch.compile"] --> B["使用 torch.profiler 捕获"]
-       B --> C["导出 Chrome Trace<br/>prof.export_chrome_trace()"]
-       C --> D["在 chrome://tracing 中加载"]
-       D --> E{"分析 GPU 时间线"}
-       E --> F["识别 kernel 间隙"]
-       E --> G["识别性能瓶颈"]
-       F --> H["Kernel launch 开销过高"]
-       G --> I["计算瓶颈 / 内存瓶颈"]
-       H --> J["使用 reduce-overhead 模式"]
-       H --> K["使用 CUDA Graph"]
-       I --> L["使用 max-autotune"]
-       I --> M["使用更低精度"]
-       J --> N["验证性能提升"]
-       K --> N
-       L --> N
-       M --> N
+   Profiling 工作流：从编译函数到 Chrome Trace，再根据瓶颈类型选择对应的优化策略。
 
 Kernel Launch 模式对比
 ==========================

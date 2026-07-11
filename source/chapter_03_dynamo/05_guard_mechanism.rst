@@ -71,34 +71,12 @@ GuardManager 的树形结构
 
 Guards 不是平铺的列表，而是 **树形结构** 。Dynamo 使用 ``GuardManager`` （定义在 ``pytorch/torch/_dynamo/guards.py`` ）来组织 guard 检查：
 
-.. mermaid::
+.. figure:: /_static/figures/guard_mechanism.svg
+   :align: center
+   :alt: Dynamo Guard 层次结构
+   :figwidth: 80%
 
-   graph TD
-       Root["RootGuardManager"]
-       
-       subgraph X["TensorGuardManager(x)"]
-           XS["ShapeGuard(shape=(32, 784))"]
-           XD["DTypeGuard(dtype=float32)"]
-           XDev["DeviceGuard(device=cuda:0)"]
-       end
-       
-       subgraph Y["TensorGuardManager(y)"]
-           YS["ShapeGuard(shape=(32, 784))"]
-           YD["DTypeGuard(dtype=float32)"]
-           YDev["DeviceGuard(device=cuda:0)"]
-       end
-       
-       ID["ID_MATCH_Guard(model=<MyModel at 0x1234>)"]
-       
-       Root --> X
-       Root --> Y
-       Root --> ID
-       X --> XS
-       X --> XD
-       X --> XDev
-       Y --> YS
-       Y --> YD
-       Y --> YDev
+   RootGuardManager 下挂两个 TensorGuardManager（x 和 y），各包含形状、类型、设备三个 guard，以及一个 ID_MATCH_Guard。
 
 这种树形结构的优势在于：
 
