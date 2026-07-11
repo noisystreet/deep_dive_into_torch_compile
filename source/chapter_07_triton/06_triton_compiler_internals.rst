@@ -312,7 +312,7 @@ Triton 的持久化缓存（ ``~/.triton/cache/`` ）在磁盘上保存编译结
 
 .. note::
 
-**内存碎片问题。**
+   **内存碎片问题。**
    在长时间运行的训练任务中，动态形状导致的频繁 kernel 编译和缓存加载可能导致 GPU 内存碎片。一个缓解方案是使用 ``torch.cuda.memory.set_per_process_memory_fraction`` 限制 PyTorch 的 GPU 内存使用量，为 Triton 编译器预留足够的内存空间。
 
 异步编译与内存管理

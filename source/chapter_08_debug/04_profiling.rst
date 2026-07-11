@@ -364,7 +364,7 @@ Compiled 模式的显存分配特点
 
 .. note::
 
-**编译后 OOM 了怎么办？ **
+   **编译后 OOM 了怎么办？ **
    如果 eager 模式能跑但编译后 OOM，可以尝试：
    - 设置 ``torch._inductor.config.recompute_threshold = 100`` 增加重计算
    - 使用 ``torch._inductor.config.triton.cudagraphs = False`` 禁用 CUDA Graph（CUDA Graph 会占用额外显存）

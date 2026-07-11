@@ -231,7 +231,7 @@ Dynamo 的做法好在哪里？
 
 .. note::
 
-**TorchDynamo 和 Inductor 曾经是独立的 GitHub 仓库。**
+   **TorchDynamo 和 Inductor 曾经是独立的 GitHub 仓库。**
    2022 年 9 月之前，TorchDynamo 在独立的 ``pytorch/torchdynamo`` 仓库中开发，与 PyTorch 主仓库完全分离。Inductor（最初叫 TorchInductor）也以独立库的形式存在。2022 年 9 月，它们通过合并请求 ``#86461`` （标题 "Move TorchDynamo into PyTorch core"）同时被搬入 PyTorch 主仓库。入仓后，团队仍然保持了一段时间的"双仓库同步"模式——在独立仓库开发，然后通过 ``Sync changes from pytorch/torchdynamo`` 的提交同步到主仓库。这种模式直到 2022 年底才结束。此后所有开发直接在 PyTorch monorepo 中进行。
 
 TorchScript 试图在一个阶段内完成"图捕获 + 代码生成"。torch.compile 将这个过程拆分为三个松耦合的阶段，每个阶段专精于一个任务：

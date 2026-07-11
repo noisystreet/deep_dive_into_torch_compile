@@ -496,5 +496,5 @@ tl.advance
 
 .. note::
 
-**块指针 API 的兼容性。**
+   **块指针 API 的兼容性。**
    块指针 API 在 Triton 2.x 中引入，在 Triton 3.x 中全面推广。如果使用较旧版本的 Triton，可能需要回退到手动偏移量计算方式。Inductor 在检测到 Triton 版本支持块指针 API 时会自动使用它。

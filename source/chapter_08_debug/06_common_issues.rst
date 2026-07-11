@@ -734,7 +734,7 @@ MaxAutotune 失败
 
 .. note::
 
-**MaxAutotune 失败是透明的** 。
+   **MaxAutotune 失败是透明的** 。
    如果某个 kernel 的 autotune 失败，Inductor 会回退到 heuristic 的 tiling 选择。模型仍然可以正常运行，只是该 kernel 的性能可能未达最优。你不会看到红色错误，而是在日志中看到一条回退消息。
 
 Pattern Matcher 失败

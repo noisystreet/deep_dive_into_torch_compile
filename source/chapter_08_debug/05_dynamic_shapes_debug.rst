@@ -226,7 +226,7 @@ Dynamic Shapes vs Static Shapes 的权衡
 
 .. tip::
 
-**如何判断 cache_size_limit 是否过小？ **
+   **如何判断 cache_size_limit 是否过小？ **
    如果在 ``TORCH_LOGS="+dynamo"`` 日志中看到 ``cache miss`` 和 ``recompiling`` 交替出现，且编译总数（compile counter）远大于输入的形状种类数，说明 ``cache_size_limit`` 可能过小导致缓存被频繁驱逐。
 
 Inductor 如何应对符号形状

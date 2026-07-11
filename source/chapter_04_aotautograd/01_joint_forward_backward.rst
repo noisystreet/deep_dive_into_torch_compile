@@ -11,7 +11,7 @@
 
 .. note::
 
-**AOTAutograd 是三个组件中提交最少但最稳定的。 **
+   **AOTAutograd 是三个组件中提交最少但最稳定的。 **
    在 PyTorch 编译栈的三个核心模块中，AOTAutograd 的提交次数只有 1,317 次，约为 Inductor（8,787 次）的 15%、Dynamo（6,439 次）的 20%。这并非因为它不重要——而是因为 AOTAutograd 是一个** 中间层 **，接口相对固定。它的核心逻辑（joint graph 创建、functionalization、分区）在 2023 年初就已经基本定型，后续的提交主要是 bug fix 和对新算子的支持适配。与此对比，Inductor 需要持续迭代代码生成策略以覆盖新算子，Dynamo 需要持续适配 CPython 新版本的字节码变化——AOTAutograd 夹在两者之间，反而是最不需要频繁改动的一层。
 
 AOTAutograd 的设计定位

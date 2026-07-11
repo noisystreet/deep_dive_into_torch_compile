@@ -170,7 +170,7 @@ Step 2 — 使用 Minimizer 定位（若有错误）
 
 .. tip::
 
-**何时使用 minimizer？ **
+   **何时使用 minimizer？ **
    minimizer 主要用于编译错误或结果一致性错误。对于"只是慢"的性能问题，minimizer 帮助有限——优先使用 profiler 和日志系统。
 
 Step 3 — Profiler 分析
@@ -314,7 +314,7 @@ Step 4 — 分析融合效率
 
 .. note::
 
-**Fusion 不是越多越好** 。
+   **Fusion 不是越多越好** 。
    过度融合可能导致单个 kernel 过于复杂，占用过多寄存器或共享内存，反而降低性能。 ``max_fusion_size`` 的推荐范围是 8-16。如果调到 16 后性能仍然没有提升，问题可能不在 fusion 上。
 
 Step 5 — 应用修复
