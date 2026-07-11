@@ -49,13 +49,23 @@ Triton 的编程模型基于 Python，通过 ``@triton.jit`` 装饰器将 Python
      - 生成连续的整数序列
      - 常用于计算偏移量
 
-``mask`` 参数是 Triton 的关键设计。由于数据块可能超出数组边界，必须通过 mask 来避免越界访问：
+``mask`` 参数是 Triton 的关键设计。由于数据块可能超出数组边界，必须通过 mask 来避免越界访问。理解 mask 的工作原理对写出正确的 Triton kernel 至关重要：
 
 .. code-block:: python
 
    offsets = block_start + tl.arange(0, BLOCK_SIZE)
    mask = offsets < n_elements       # 边界检查
    x = tl.load(x_ptr + offsets, mask=mask, other=0.0)
+
+mask 的底层实现是 GPU 的 **谓词执行（Predicated Execution）**。当 warp 内的 32 个线程执行 ``tl.load`` 时，所有线程都发射内存加载指令——即使 mask 为 false 的线程也不会跳过指令。mask 只控制加载结果是否被丢弃：
+- mask=True：加载结果正常写入目标寄存器
+- mask=False：加载结果被丢弃，目标寄存器写入 ``other`` 参数的值
+
+这意味着 mask **不会节省内存带宽**——被 mask 掉的线程仍然向内存控制器发起请求，只是其结果不会被使用。带宽浪费的程度取决于 mask 为 false 的线程在 warp 中的分布：如果 false 线程集中在 warp 尾部（典型的边界情况），前半部分线程的加载仍然是完全合并的；如果 false 线程在 warp 内随机分布，则可能导致内存事务的严重浪费。
+
+``other`` 参数的行为也值得注意：当 mask=False 时，Triton 编译器插入的是 select 指令而非 predicated store。select 指令根据 mask 选择 ``other`` 或真正的加载结果，这种实现避免了一致性 GPU 上不同线程间的控制流分歧，但代价是多了一条 select 指令的发射和一次额外的寄存器写入。
+
+理解 mask 的内存语义对于性能优化很重要：如果一个 kernel 中 50% 的线程因 mask 被屏蔽，实际带宽利用率只有峰值的一半。这就是为什么选择适当的 ``BLOCK_SIZE`` 让 mask false 线程占比最小化是一个重要的 autotune 目标。
 
 数学运算
 --------------
@@ -174,10 +184,18 @@ constexpr 参数
 
        tl.store(c_ptr + offsets, acc)
 
+``tl.dot`` 的"自动利用 Tensor Core"意味着编译器将每条 ``tl.dot`` 调用映射为 NVIDIA 的 ``mma.sync``（矩阵乘累加）PTX 指令。在这个过程中，warp 内的 32 个线程协作完成一个分块矩阵乘法：每个线程持有输出矩阵的一部分（通常是 16 个元素），线程之间通过 warp 级别的 shuffle 指令交换部分和。开发者不需要关心这些线程间的协作细节——编译器根据 ``BLOCK_SIZE`` 自动决定每个线程负责的元素数量和同步策略。
+
+这种自动化也带来了约束：``tl.dot`` 要求 ``BLOCK_SIZE`` 是 16 的倍数（在 Ampere 架构上），因为 ``mma.sync`` 指令的硬件 tile 大小为 16×16。如果传入的 block 形状不是 16 的倍数，编译器需要插入额外的 padding 或分块处理逻辑，可能损失性能。
+
 ``tl.dot`` 支持的可选参数包括：
 
-- ``input_precision`` ：控制内部累加精度（"ieee"、"tf32"、"tf32x3"）
+- ``input_precision`` ：控制内部累加精度（"ieee"、"tf32"、"tf32x3"）。"ieee" 严格遵循 IEEE 754 标准，最慢但最精确；"tf32" 使用 Tensor Core 的 TF32 格式，在 Ampere 上提供接近 FP32 的动态范围但只需 1/4 的带宽；"tf32x3" 使用三次 TF32 累加来提高精度
 - ``max_num_imprecise_acc`` ：允许的不精确累加次数
+
+选择 ``input_precision`` 需要权衡模型精度和计算吞吐：对于训练场景，通常推荐 ``input_precision="ieee"``；对于推理场景，``"tf32"`` 通常可以在不显著损失精度的情况下获得 2-3 倍的矩阵乘法加速。
+
+``acc`` 参数的显式传递是 Triton 设计的一个关键细节。它让编译器能够追踪累加值的精度和生命周期——编译器知道 ``acc`` 是一个跨 ``tl.dot`` 调用持续存在的累加器，从而可以优化寄存器的分配策略（将累加器值保持在寄存器中而非溢出到 local memory）。这也使 Triton 支持更灵活的融合模式：你可以对 ``tl.dot`` 的结果进行逐元素操作后，再传给下一个 ``tl.dot``，编译器仍然能正确追踪数据流。
 
 原子操作
 --------------
