@@ -17,11 +17,11 @@
 AOTAutograd 的设计定位
 ==========================
 
-Dynamo 输出的 FX Graph 只描述** 前向 **的 Tensor 运算。若编译栈到此为止，推理场景够用，训练场景却缺了半边：反向传播怎么办？
+Dynamo 输出的 FX Graph 只描述 **前向** 的 Tensor 运算。若编译栈到此为止，推理场景够用，训练场景却缺了半边：反向传播怎么办？
 
-eager 模式下，autograd 的 tape 在前向执行时** 逐 op 追加 **， ``backward()`` 再** 逐 op 回放 **。这对用户透明，但对编译器是盲区——每个 ``Function.backward`` 只见局部，看不见「这个 activation 保存还是重算更划算」「反向里连续两个 pointwise 能否和 Inductor 融合」。
+eager 模式下，autograd 的 tape 在前向执行时 **逐 op 追加**， ``backward()`` 再 **逐 op 回放**。这对用户透明，但对编译器是盲区——每个 ``Function.backward`` 只见局部，看不见「这个 activation 保存还是重算更划算」「反向里连续两个 pointwise 能否和 Inductor 融合」。
 
-AOTAutograd 的设计目标：** 把 autograd 从运行时搬到编译时 **，在一张** 联合图（joint graph） **上做全局分析，再拆成可独立编译的前向/反向子图。
+AOTAutograd 的设计目标：**把 autograd 从运行时搬到编译时**，在一张 **联合图（joint graph）** 上做全局分析，再拆成可独立编译的前向/反向子图。
 
 .. figure:: /_static/figures/eager_vs_aotautograd.svg
    :align: center

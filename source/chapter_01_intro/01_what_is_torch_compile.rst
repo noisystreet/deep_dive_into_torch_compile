@@ -6,8 +6,8 @@
 
 .. note::
 
-   **torch.compile 的代号是 "TorchDynamo" 还是 "PyTorch 2.0"？ **
-   严格来说， ``torch.compile`` 是 PyTorch 2.0 引入的** 编译 API** ，而 TorchDynamo 是它底层的图捕获引擎。项目在开发阶段的内部代号是 "Dynamo"，团队最初只打算做一个更好的 TorchScript 替代品，但后来发现字节码方案比预期强大得多，最终整个编译栈变成了 PyTorch 2.0 最核心的新特性。PyTorch 2.0 发布会时，核心维护者 Soumith Chintala 说这是 "PyTorch 历史上最大的一次发布"。
+   **torch.compile 的代号是 "TorchDynamo" 还是 "PyTorch 2.0"？**
+   严格来说， ``torch.compile`` 是 PyTorch 2.0 引入的 **编译 API** ，而 TorchDynamo 是它底层的图捕获引擎。项目在开发阶段的内部代号是 "Dynamo"，团队最初只打算做一个更好的 TorchScript 替代品，但后来发现字节码方案比预期强大得多，最终整个编译栈变成了 PyTorch 2.0 最核心的新特性。PyTorch 2.0 发布会时，核心维护者 Soumith Chintala 说这是 "PyTorch 历史上最大的一次发布"。
 
 从一个实际问题说起
 ====================
@@ -261,7 +261,7 @@ TorchScript 试图在一个阶段内完成"图捕获 + 代码生成"。torch.com
 - 你可以用 ``torch.compile(fn, backend="eager")`` 跳过 Inductor，只验证图捕获是否正确
 - 你可以注册自己的后端替换 Inductor，用同一个图捕获管道
 
-**抉择四：选择 Inductor 作为默认后端，而非对接已有编译器 **
+**抉择四：选择 Inductor 作为默认后端，而非对接已有编译器**
 
 当时社区有几个可供选择的"图 → 代码"方案：
 
@@ -272,8 +272,8 @@ TorchScript 试图在一个阶段内完成"图捕获 + 代码生成"。torch.com
 
 PyTorch 团队最终决定自研 **Inductor** ，原因如下：
 
-1.**端到端控制 ** ：从 FX Graph 到最终代码的整条链路都在 PyTorch 生态内，排查问题和迭代优化的周期最短
-2.**Triton 语言 ** ：Inductor 的 GPU 后端生成 Triton 代码。Triton 提供比 CUDA 更高的抽象层级，让 Inductor 不必直接编写和维护复杂 CUDA kernel。CPU 后端则生成 C++/OpenMP 代码
+1.**端到端控制** ：从 FX Graph 到最终代码的整条链路都在 PyTorch 生态内，排查问题和迭代优化的周期最短
+2.**Triton 语言** ：Inductor 的 GPU 后端生成 Triton 代码。Triton 提供比 CUDA 更高的抽象层级，让 Inductor 不必直接编写和维护复杂 CUDA kernel。CPU 后端则生成 C++/OpenMP 代码
 3.**Define-by-run IR** ：Inductor 内部使用循环级 IR（IRNode），这种 IR 保留了 PyTorch 的 "define-by-run" 哲学——IR 节点本身就是像 PyTorch 操作一样被逐级构建的
 
 不影响这个决策的是：用户可以在 ``mode`` 参数中指定不同的后端。Inductor 是 **默认** 的，但不是 **唯一** 的。
@@ -320,16 +320,16 @@ PyTorch 团队最终决定自研 **Inductor** ，原因如下：
 
 原因有三：
 
-**第一，基础设施成熟了 ** 。PEP 523（2016 年合入 CPython 3.6）提供了字节码级别的帧回调机制，但没有好用的 Python 字节码分析工具。Dynamo 团队花了不少精力构建字节码分析器（见 ``torch/_dynamo/bytecode_analysis.py`` ），这是 TorchScript 时代做不到的。
+**第一，基础设施成熟了** 。PEP 523（2016 年合入 CPython 3.6）提供了字节码级别的帧回调机制，但没有好用的 Python 字节码分析工具。Dynamo 团队花了不少精力构建字节码分析器（见 ``torch/_dynamo/bytecode_analysis.py`` ），这是 TorchScript 时代做不到的。
 
-**第二，Triton 语言出现了 ** 。Triton（由 OpenAI 的 Philippe Tillet 开发）从根本上降低了 GPU 代码生成的门槛。Inductor 的 GPU 后端生成 Triton 代码而不是直接生成 PTX/SASS，大大降低了开发和维护成本。
+**第二，Triton 语言出现了** 。Triton（由 OpenAI 的 Philippe Tillet 开发）从根本上降低了 GPU 代码生成的门槛。Inductor 的 GPU 后端生成 Triton 代码而不是直接生成 PTX/SASS，大大降低了开发和维护成本。
 
-**第三，社区需求爆发了 ** 。2021-2022 年，模型规模的增长远超单 GPU 算力增长。用户对性能的需求从"nice to have"变成了"must have"。同时大量用户在 TorchScript 上碰壁后积累了"恨意"，社区对可用性更高的编译器方案有强烈的呼声。
+**第三，社区需求爆发了** 。2021-2022 年，模型规模的增长远超单 GPU 算力增长。用户对性能的需求从"nice to have"变成了"must have"。同时大量用户在 TorchScript 上碰壁后积累了"恨意"，社区对可用性更高的编译器方案有强烈的呼声。
 
 小结
 ======
 
-这一节从一个性能问题出发，引出了 torch.compile 的核心思路——**先捕获计算图，再编译执行 ** 。我们还回顾了 PyTorch 编译器的发展历程：
+这一节从一个性能问题出发，引出了 torch.compile 的核心思路——**先捕获计算图，再编译执行** 。我们还回顾了 PyTorch 编译器的发展历程：
 
 - **TorchScript** （静态子集）：用户体验割裂，采用率低
 - **FX Graph** （符号执行）：提供了可编程图表示，但仍是 capture-only

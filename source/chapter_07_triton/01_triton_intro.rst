@@ -19,9 +19,9 @@ Triton 是一种面向 GPU 编程的语言和编译器，由 OpenAI 开发。在
 Triton 的核心设计理念
 =========================
 
-Triton 的设计目标是** 让 GPU kernel 编程更简单，同时不牺牲性能 **。它通过以下方式实现：
+Triton 的设计目标是 **让 GPU kernel 编程更简单，同时不牺牲性能**。它通过以下方式实现：
 
-** 块级编程（Block-level Programming）** 。Triton 让开发者以 "块"（block）为单位思考，而不是单个线程。每个 Triton program 处理一个数据块（如 1024 个元素），块内的操作自动并行化：
+**块级编程（Block-level Programming）** 。Triton 让开发者以 "块"（block）为单位思考，而不是单个线程。每个 Triton program 处理一个数据块（如 1024 个元素），块内的操作自动并行化：
 
 .. code-block:: python
 
