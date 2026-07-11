@@ -20,3 +20,4 @@ __pycache__/
 
 # 本地 PyTorch 源码目录
 pytorch/
+torch_compile_debug/
