@@ -61,27 +61,12 @@ Min-cut 重计算是在"保存内存"和"增加计算"之间做 tradeoff：
 
 Min-cut 分区则会分析每个操作的计算代价和存储代价，决定哪些中间结果值得保存、哪些可以重计算：
 
-.. mermaid::
+.. figure:: /_static/figures/min_cut_partition.svg
+   :align: center
+   :alt: 朴素分区 vs Min-Cut 分区
+   :figwidth: 90%
 
-   flowchart LR
-       subgraph naive["朴素分区"]
-           direction TB
-           N1["前向保存所有中间结果"] --> N2["exp(x): 保存"]
-           N1 --> N3["cos(exp(x)): 保存"]
-           N1 --> N4["sin(cos(exp(x))): 保存"]
-           N2 --> N_bwd1["反向直接使用"]
-           N3 --> N_bwd1
-           N4 --> N_bwd1
-       end
-
-       subgraph mincut["Min-Cut 分区"]
-           direction TB
-           M1["前向选择性保存"] --> M2["exp(x): 保存（计算昂贵）"]
-           M1 --> M3["cos(exp(x)): 丢弃（反向重计算）"]
-           M1 --> M4["sin(cos(exp(x))): 保存"]
-           M2 --> M_bwd1["反向从 exp(x) 重算 cos(exp(x))"]
-           M4 --> M_bwd2["反向直接使用"]
-       end
+   左侧朴素分区保存所有中间结果，右侧 Min-Cut 分区选择性保存。
 
 两种分区的定量对比：
 

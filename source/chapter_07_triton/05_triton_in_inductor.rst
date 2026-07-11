@@ -320,26 +320,12 @@ Autotune 的异步执行
 
 Inductor 的 autotune 在 ``AutoTuneProcess`` 中异步执行。主进程继续执行代码生成和编译，autotune 子进程在后台进行基准测试：
 
-.. mermaid::
+.. figure:: /_static/figures/autotune_process.svg
+   :align: center
+   :alt: 异步 Autotune 过程
+   :figwidth: 90%
 
-   sequenceDiagram
-       participant Main as 主进程
-       participant AT as AutoTuneProcess
-       participant Triton as Triton Compiler
-
-       Main->>AT: 提交 autotune 请求（kernel 模板 + 输入信息）
-       Note over Main: 主进程继续执行<br/>其他 kernel 的代码生成
-       
-       AT->>Triton: 生成 config 组合列表
-       loop 每个 config
-           AT->>Triton: 编译 kernel（带特定 config）
-           Triton-->>AT: cubin
-           AT->>Triton: 执行基准测试
-           Triton-->>AT: 延迟数据
-       end
-       
-       AT-->>Main: 返回最优 config
-       Note over Main: 主进程使用最优 config<br/>更新 kernel 代码
+   主进程提交 autotune 请求后继续执行其他 kernel 的代码生成，AutoTuneProcess 在后台遍历 config 列表进行编译和基准测试，最终返回最优 config。
 
 这种异步设计避免了 autotune 阻塞整个编译流程。但是，最终选择的结果仍然需要在主进程中触发一次 re-compile（如果最优 config 与初始 config 不同）。
 

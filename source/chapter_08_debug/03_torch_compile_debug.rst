@@ -27,31 +27,12 @@ PyTorch 提供了 ``TORCH_COMPILE_DEBUG=1`` 环境变量，用于生成 **结构
 
 调试报告的生成流程如下图所示：
 
-.. mermaid::
+.. figure:: /_static/figures/debug_report_flow.svg
+   :align: center
+   :alt: 调试报告生成流程
+   :figwidth: 100%
 
-   sequenceDiagram
-       participant User as 用户代码
-       participant DC as TORCH_COMPILE_DEBUG
-       participant Dynamo as TorchDynamo
-       participant Inductor as TorchInductor
-       participant Report as 调试报告生成器
-       participant Files as 输出文件
-
-       User->>DC: 设置环境变量
-       DC->>Dynamo: 启用详细记录模式
-       DC->>Inductor: 启用详细记录模式
-       Dynamo->>Report: 记录 Graph Break 位置
-       Dynamo->>Report: 记录 Guard 表达式
-       Dynamo->>Report: 记录子图 FX Graph
-       Inductor->>Report: 记录 Lowering 过程
-       Inductor->>Report: 记录融合决策
-       Inductor->>Report: 记录生成的 Kernel 代码
-       Report->>Files: 生成 torchdynamo_debug.html
-       Report->>Files: 生成 inductor.html
-       Report->>Files: 生成 fx_graph_readable.txt
-       Report->>Files: 生成 fx_graph_runnable.py
-       Report->>Files: 生成 replay.py
-       User->>Files: 最终写入磁盘
+   从设置环境变量到输出 5 个调试文件的完整流程。
 
 调试报告的目录结构
 =========================
