@@ -84,6 +84,11 @@ def check_file(path, fix=False):
                     # 先去除 result 末尾空格（RST 不允许 ** 前有空格当关闭标记）
                     while result and result[-1] == " ":
                         result.pop()
+                    # 检测 ** 前有多余空格（内侧空格）
+                    if prev == " " or prev == "\t":
+                        issues.append(
+                            (path, lineno, f"'**' 前有多余空格（RST 不允许）")
+                        )
                     # CJK 紧挨 after ** → 缺少空格
                     if is_cjk(next_):
                         issues.append(
@@ -120,6 +125,11 @@ def check_file(path, fix=False):
                     # 去除 result 末尾空格
                     while result and result[-1] == " ":
                         result.pop()
+                    # 检测 `` 前有多余空格（内侧空格）
+                    if prev == " " or prev == "\t":
+                        issues.append(
+                            (path, lineno, f"'``' 前有多余空格（RST 不允许）")
+                        )
                     if is_cjk(next_):
                         issues.append(
                             (path, lineno, f"'``{next_}' 后缺少空格: ...``{next_}...")
