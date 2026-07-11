@@ -326,37 +326,13 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
 
 下面这张序列图总结了整个编译过程的时间线：
 
-.. mermaid::
+.. figure:: /_static/figures/compilation_pipeline.svg
+   :align: center
+   :alt: torch.compile 编译流水线
+   :figwidth: 100%
 
-   sequenceDiagram
-       participant 用户代码
-       participant Dynamo
-       participant AOTAutograd
-       participant Inductor
-
-       用户代码->>Dynamo: torch.compile
-       Dynamo-->>用户代码: 注册回调
-
-       用户代码->>Dynamo: compiled_fn()
-       Dynamo->>Dynamo: convert_frame
-       Note over Dynamo: FX Graph
-
-       Dynamo->>AOTAutograd: lookup_backend
-       AOTAutograd->>AOTAutograd: aot_autograd
-       Note over AOTAutograd: Joint Graph + Partition
-
-       AOTAutograd->>Inductor: compile_fx
-       Inductor->>Inductor: lowering
-       Inductor->>Inductor: scheduler
-       Inductor->>Inductor: codegen
-
-       Inductor-->>AOTAutograd: cached fn
-       AOTAutograd-->>Dynamo: cached fn
-       Dynamo-->>用户代码: cached fn
-
-       用户代码->>Dynamo: 后续调用
-       Dynamo->>Dynamo: guard check → hit cache
-       Dynamo-->>用户代码: 结果
+   编译流水线概览：Dynamo 捕获图、AOTAutograd 生成联合图并分区、
+   Inductor 降级为 IR 并生成代码，之后缓存供后续调用命中。
 
 对应前面 "设计原则在本例中的体现" 的六条原则：序列图中的每一次箭头跨越，都对应一次阶段间的 IR 传递；而后续调用时 Dynamo 内部的 "guard check → hit cache" 则体现了 **编译重、运行轻** 和 **正确性优先** 。
 
