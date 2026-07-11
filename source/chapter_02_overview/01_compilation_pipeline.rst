@@ -12,7 +12,7 @@
 编译栈的设计原则
 ==========================
 
-第 1.1 节我们从历史角度回顾了 TorchScript → torch.compile 的三次路线演变。这里把散落在各章的设计决策收成** 六条原则** ，作为阅读后续章节的「透镜」——遇到具体机制时，可以问：它体现了哪条原则？放弃了什么？代价是什么？
+第 1.1 节我们从历史角度回顾了 TorchScript → torch.compile 的三次路线演变。这里把散落在各章的设计决策收成 **六条原则** ，作为阅读后续章节的「透镜」——遇到具体机制时，可以问：它体现了哪条原则？放弃了什么？代价是什么？
 
 .. list-table::
    :header-rows: 1
@@ -52,11 +52,11 @@
 第一次调用 ``train_step(x, y)`` 时发生了什么？
 
 1. **编译器适应 Python** ：Dynamo 不会因为有 ``print`` 就拒绝编译，而是在 ``print`` 处 graph break，前后各形成一个子图（第 3.6 节）。
-2.**阶段专精 ** ：Dynamo 只负责捕获前向 FX Graph；AOTAutograd 在编译期追联合反向图；Inductor 只负责生成 kernel——各干各的。
+2.**阶段专精** ：Dynamo 只负责捕获前向 FX Graph；AOTAutograd 在编译期追联合反向图；Inductor 只负责生成 kernel——各干各的。
 3.**策略与机制分离** ：Inductor 的 ``select_decomp_table()`` 决定 ``(x*y).sum()`` 要不要分解为基本算子，AOTAutograd 只执行分解，不关心 Triton 怎么写。
-4. **正确性优先 ** ：若下次 ``x.shape`` 变了，guard 失败触发重编译；若重编译次数过多，fallback 到 eager 而不是 silent wrong result。
+4. **正确性优先** ：若下次 ``x.shape`` 变了，guard 失败触发重编译；若重编译次数过多，fallback 到 eager 而不是 silent wrong result。
 5.**Define-by-Run** ：Inductor 在遍历 FX 节点时逐个 ``lower`` 出 IRNode，而不是先建完整静态 IR 再优化。
-6.**编译重、运行轻 ** ：首次调用可能要数秒编译；从第二次起命中缓存，执行接近手写 kernel 的速度。
+6.**编译重、运行轻** ：首次调用可能要数秒编译；从第二次起命中缓存，执行接近手写 kernel 的速度。
 
 .. code-block:: text
 
@@ -110,7 +110,7 @@
            ├── cpp.py           #   CPU: C++/OpenMP 代码生成
            └── wrapper.py       #   调用包装器
 
-这个布局本身就是架构的反映：**三个目录对应三个组件，目录之间的调用链就是编译流水线 ** 。
+这个布局本身就是架构的反映：**三个目录对应三个组件，目录之间的调用链就是编译流水线** 。
 
 一次完整的编译调用链
 ============================
@@ -126,7 +126,7 @@
 
 这行代码实际上做了什么？我们查看源码入口。
 
-``torch.compile`` （位于 ``torch/compiler/__init__.py`` ）最终调用到 ``torch._dynamo.optimize()`` ，它的核心作用是**注册一个帧拦截回调** 到 CPython 解释器。
+``torch.compile`` （位于 ``torch/compiler/__init__.py`` ）最终调用到 ``torch._dynamo.optimize()`` ，它的核心作用是 **注册一个帧拦截回调** 到 CPython 解释器。
 
 关键实现在 ``torch/_dynamo/eval_frame.py`` 中。Dynamo 通过 ``set_eval_frame`` 这个 C++ 扩展函数（定义在 ``torch/_C/_dynamo/eval_frame.cpp`` ），将自己挂入 CPython 的帧执行回调：
 
@@ -267,7 +267,7 @@ PEP 523 是在 CPython 3.6 中引入的（`peps.python.org/pep-0523 <https://pep
        │
        └─ 4. 返回包装后的 forward_fn + backward_fn
 
-AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使用 ``torch.fx.experimental.proxy_tensor.make_fx`` 对 FX Graph 执行一次"假反向传播"——即用代理张量走一遍 autograd 流程，同时记录所有反向操作，生成一张包含前向和反向的 ** 联合计算图**（joint graph）。
+AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使用 ``torch.fx.experimental.proxy_tensor.make_fx`` 对 FX Graph 执行一次"假反向传播"——即用代理张量走一遍 autograd 流程，同时记录所有反向操作，生成一张包含前向和反向的 **联合计算图** （joint graph）。
 
 然后 ``partitioners.py`` 中的 ``min_cut_rematerialization_partition`` 对这联合图进行切分：哪些计算在前向做、哪些在反向做、哪些在反向中重计算以节省显存。
 
@@ -358,7 +358,7 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
        Dynamo->>Dynamo: guard check → hit cache
        Dynamo-->>用户代码: 结果
 
-对应前面 "设计原则在本例中的体现" 的六条原则：序列图中的每一次箭头跨越，都对应一次阶段间的 IR 传递；而后续调用时 Dynamo 内部的 "guard check → hit cache" 则体现了 ** 编译重、运行轻**和 ** 正确性优先** 。
+对应前面 "设计原则在本例中的体现" 的六条原则：序列图中的每一次箭头跨越，都对应一次阶段间的 IR 传递；而后续调用时 Dynamo 内部的 "guard check → hit cache" 则体现了 **编译重、运行轻** 和 **正确性优先** 。
 
 关键源代码入口速查
 ==========================
@@ -409,9 +409,9 @@ AOTAutograd 的核心代码在 ``torch/_functorch/aot_autograd.py`` 中。它使
 这一节我们追踪了一次完整的 torch.compile 调用链，从 ``torch.compile()`` 注册帧拦截，到 Dynamo 捕获 FX Graph，再到 AOTAutograd 联合求导和图分区，最后 Inductor 降级和代码生成。关键要点：
 
 - Dynamo 通过 **PEP 523** 在字节码层级拦截帧执行
-- **符号执行引擎 ** 用 FakeTensor 模拟 Tensor 操作，同时构建 FX Graph
-- **三阶段流水线 ** （Dynamo → AOTAutograd → Inductor）松耦合，每阶段可独立替换
-- **六条设计原则 ** （见上文）贯穿三大组件，是理解各章实现细节的纲
+- **符号执行引擎** 用 FakeTensor 模拟 Tensor 操作，同时构建 FX Graph
+- **三阶段流水线** （Dynamo → AOTAutograd → Inductor）松耦合，每阶段可独立替换
+- **六条设计原则** （见上文）贯穿三大组件，是理解各章实现细节的纲
 - **编译结果被缓存** ，后续调用直接命中缓存跳过编译
 
 下一节我们换个视角，看看编译过程中数据（张量）和控制流在不同组件之间是如何流转的。后面 2.4 节还会专题讨论贯穿三个组件的编译缓存架构。

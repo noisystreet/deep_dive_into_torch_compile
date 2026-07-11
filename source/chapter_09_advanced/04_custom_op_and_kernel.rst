@@ -147,7 +147,7 @@ PyTorch 提供了 ``torch.library`` API 来注册自定义算子：
 
 .. synced-code-end::
 
-** 注册 Fallback**
+**注册 Fallback**
 
 对于无法分解也无法单独 lowering 的算子，可以注册 fallback 让它回退到 eager：
 

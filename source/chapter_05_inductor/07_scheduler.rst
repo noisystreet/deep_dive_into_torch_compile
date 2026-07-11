@@ -6,16 +6,16 @@ Scheduler
 
 当 lowering 将 FX Graph 中的所有节点转换为 IRNode 后，Inductor 得到了一个扁平的 IRNode 列表。每个 IRNode 都是一个独立可执行的 kernel——但逐个 launch 它们是非常低效的。
 
-Scheduler 的工作就是 **分析这些 IRNode 之间的依赖关系，将兼容的节点融合成更大的 kernel，并规划最优的执行顺序 ** 。
+Scheduler 的工作就是 **分析这些 IRNode 之间的依赖关系，将兼容的节点融合成更大的 kernel，并规划最优的执行顺序** 。
 
 Scheduler 的职责
 ====================
 
 Scheduler（定义在 ``pytorch/torch/_inductor/scheduler.py`` ）的核心职责有三：
 
-1.**依赖分析 ** ：分析 IRNode 之间的数据依赖，构建依赖图
-2.**融合（Fusion） ** ：将兼容的 IRNode 合并为 ``FusedSchedulerNode``
-3.**调度（Scheduling） ** ：确定最终 kernel 的执行顺序
+1.**依赖分析** ：分析 IRNode 之间的数据依赖，构建依赖图
+2.**融合（Fusion）** ：将兼容的 IRNode 合并为 ``FusedSchedulerNode``
+3.**调度（Scheduling）** ：确定最终 kernel 的执行顺序
 
 .. mermaid::
 
@@ -88,10 +88,10 @@ Scheduler 的融合算法是一个迭代过程，核心逻辑在 ``decide_fusion
 
 融合的决策（ ``can_fuse`` 或 ``fuse_if_speedup`` ）基于以下条件：
 
-1.**设备相同 ** ：两个节点必须在同一个设备上
-2.**类型兼容 ** ：Pointwise + Pointwise 总是可融合；Pointwise + Reduction 有条件融合（reduction 必须是外层）
-3.**依赖无环 ** ：融合后不能产生循环依赖
-4.**性能收益 ** ： ``fuse_if_speedup`` 会估算融合后的性能提升，融合后收益为正才执行
+1.**设备相同** ：两个节点必须在同一个设备上
+2.**类型兼容** ：Pointwise + Pointwise 总是可融合；Pointwise + Reduction 有条件融合（reduction 必须是外层）
+3.**依赖无环** ：融合后不能产生循环依赖
+4.**性能收益** ： ``fuse_if_speedup`` 会估算融合后的性能提升，融合后收益为正才执行
 
 其中条件 4 是可选的——在 ``max-autotune`` 模式下会做更激进的融合评估，在 ``default`` 模式下则使用启发式规则。
 
@@ -142,8 +142,8 @@ Codegen 触发
 
 这一节介绍了 Inductor 的 Scheduler：
 
-- **核心职责 ** ：依赖分析 → 融合 → 调度
+- **核心职责** ：依赖分析 → 融合 → 调度
 - **SchedulerNode** ：单个 IRNode 的包装器，记录读/写依赖
 - **FusedSchedulerNode** ：多个 SchedulerNode 融合的结果，共享同一个 kernel launch
-- **融合条件 ** ：设备一致、类型兼容、无循环依赖、性能收益为正
+- **融合条件** ：设备一致、类型兼容、无循环依赖、性能收益为正
 - **Codegen 触发** ：融合后遍历节点，分派给对应后端的 codegen 函数

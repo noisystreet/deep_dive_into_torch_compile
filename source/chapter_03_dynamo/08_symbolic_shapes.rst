@@ -4,9 +4,9 @@
 符号形状（Symbolic Shapes）
 ================================
 
-第 3.5 节的 guard 机制默认把 ``x.shape[0] == 32`` 这样的 **具体数值 ** 编进 guard 里。输入形状一变，guard 失败，触发重新编译。对于 batch size 固定、序列长度恒定的训练任务，这完全合理；但对于变长 batch、LLM 推理中的不同 prompt 长度，频繁重编译会让编译时间压过执行收益。
+第 3.5 节的 guard 机制默认把 ``x.shape[0] == 32`` 这样的 **具体数值** 编进 guard 里。输入形状一变，guard 失败，触发重新编译。对于 batch size 固定、序列长度恒定的训练任务，这完全合理；但对于变长 batch、LLM 推理中的不同 prompt 长度，频繁重编译会让编译时间压过执行收益。
 
-``dynamic=True`` 和符号形状机制，就是 Dynamo 用来**用符号代替具体数值 ** 、一次编译适配多种形状的方案。这一节从 ``ShapeEnv`` 和 ``SymNode`` 出发，解释符号形状在编译栈中如何工作。
+``dynamic=True`` 和符号形状机制，就是 Dynamo 用来 **用符号代替具体数值** 、一次编译适配多种形状的方案。这一节从 ``ShapeEnv`` 和 ``SymNode`` 出发，解释符号形状在编译栈中如何工作。
 
 从具体形状到符号形状
 ==========================
@@ -18,7 +18,7 @@
    输入 x.shape = (32, 784)
    guard 表达式: x.shape[0] == 32 AND x.shape[1] == 784
 
-开启动态编译（ ``dynamic=True`` 或 ``mark_dynamic`` ）后，Dynamo 不再绑定具体数值，而是创建**符号变量** ：
+开启动态编译（ ``dynamic=True`` 或 ``mark_dynamic`` ）后，Dynamo 不再绑定具体数值，而是创建 **符号变量** ：
 
 .. code-block:: text
 
@@ -93,7 +93,7 @@ ShapeEnv 与 SymNode
    def fn(x):
        return x * 2
 
-**按维度标记 ** （更精细）：
+**按维度标记** （更精细）：
 
 .. code-block:: python
 
@@ -109,14 +109,14 @@ ShapeEnv 与 SymNode
 
    fn(x)
 
-**Export 路径声明 ** （编译期固定约束）：
+**Export 路径声明** （编译期固定约束）：
 
 .. code-block:: python
 
    batch = torch.export.Dim("batch", min=1, max=512)
    torch.export.export(model, (x,), dynamic_shapes={"x": {0: batch}})
 
-三种方式底层都走 ``ShapeEnv`` ，但约束的**声明时机** 不同： ``mark_dynamic`` 在运行时、 ``export Dim`` 在 trace 时、 ``dynamic=True`` 则默认将所有维度视为可能变化。
+三种方式底层都走 ``ShapeEnv`` ，但约束的 **声明时机** 不同： ``mark_dynamic`` 在运行时、 ``export Dim`` 在 trace 时、 ``dynamic=True`` 则默认将所有维度视为可能变化。
 
 符号 guard vs 数值 guard
 ==============================
@@ -156,16 +156,16 @@ Guard 树（第 3.5 节）在符号形状模式下会生成不同类型的检查
        kernel 质量: 中（runtime 读 shape，优化保守）
        适用: 变长输入推理、多 batch size 服务
 
-PyTorch 还在探索 **延迟特化 ** （第 5.10 节）：先用泛化 kernel 运行，后台为常见形状编译特化版本，后续自动切换。这是静态与动态之间的折中。
+PyTorch 还在探索 **延迟特化** （第 5.10 节）：先用泛化 kernel 运行，后台为常见形状编译特化版本，后续自动切换。这是静态与动态之间的折中。
 
 与 graph break 的交互
 ==========================
 
 并非所有 Python 代码都能被符号化。以下情况仍可能导致 graph break 或编译失败：
 
-- **数据依赖形状 ** ： ``x[x.sum() > 0]``——输出 shape 取决于数据值，符号执行无法确定
-- **Python 整数强制转换 ** ： ``int(x.shape[0])`` 用于 Python 控制流
-- **不支持的 SymPy 运算 ** ：某些 shape 算术无法表达为符号约束
+- **数据依赖形状** ： ``x[x.sum() > 0]``——输出 shape 取决于数据值，符号执行无法确定
+- **Python 整数强制转换** ： ``int(x.shape[0])`` 用于 Python 控制流
+- **不支持的 SymPy 运算** ：某些 shape 算术无法表达为符号约束
 
 遇到这些情况，Dynamo 要么 graph break（第 3.6 节），要么回退到静态 guard。调试时可启用：
 
@@ -178,10 +178,10 @@ PyTorch 还在探索 **延迟特化 ** （第 5.10 节）：先用泛化 kernel 
 小结
 ======
 
-- **符号形状 ** 用 ``SymNode`` / ``SymInt`` 代替具体维度数值，让一份编译结果适配多种输入尺寸
+- **符号形状** 用 ``SymNode`` / ``SymInt`` 代替具体维度数值，让一份编译结果适配多种输入尺寸
 - ``ShapeEnv`` （ ``symbolic_shapes.py`` ）是符号变量的创建、约束求解与 guard 生成的核心
-- **启用方式 ** ： ``dynamic=True`` 、 ``mark_dynamic`` 、 ``torch.export.Dim`` 三种路径，底层共享同一基础设施
-- **权衡 ** ：减少重编译 vs kernel 特化程度；静态训练优先关闭 dynamic，变长推理优先开启
+- **启用方式** ： ``dynamic=True`` 、 ``mark_dynamic`` 、 ``torch.export.Dim`` 三种路径，底层共享同一基础设施
+- **权衡** ：减少重编译 vs kernel 特化程度；静态训练优先关闭 dynamic，变长推理优先开启
 - **调试** ： ``TORCH_LOGS=+dynamic`` 追踪符号决策；详见第 8.5 节
 
 至此，第 3 章的内容全部完成。我们从字节码基础开始，走过了字节码分析、图捕获、guard 机制、graph break、缓存与重新编译、符号形状，覆盖了 TorchDynamo 的完整工作流程。

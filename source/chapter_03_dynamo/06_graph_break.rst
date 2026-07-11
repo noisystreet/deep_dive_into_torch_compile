@@ -11,16 +11,16 @@ Graph Break
 什么会触发 Graph Break？
 =============================
 
-graph break 分为两大类： **显式触发 ** 和**隐式触发 ** 。
+graph break 分为两大类： **显式触发** 和 **隐式触发** 。
 
-**显式触发 ** ：Dynamo 明确知道某些操作无法追踪。
+**显式触发** ：Dynamo 明确知道某些操作无法追踪。
 
 - 调用 ``print()`` 、 ``assert`` 等非 Tensor 操作
 - 使用 ``torch.Tensor.item()`` 将 Tensor 转为 Python 数值
 - 试图将 Tensor 传给 C 扩展或 numpy 函数
 - 使用 ``@torch._dynamo.disable`` 装饰器标注的函数
 
-**隐式触发 ** ：符号执行过程中遇到了无法处理的异常。
+**隐式触发** ：符号执行过程中遇到了无法处理的异常。
 
 - 遇到了不认识的字节码指令
 - 变量类型不在 ``VariableTracker`` 的覆盖范围内
@@ -93,7 +93,7 @@ graph_break() 内部
               从断点之后的下一条指令开始，
               重新开始一个新的子图
 
-关键的设计是：**graph break 不是直接返回，而是继续执行 ** 。Dynamo 会在断点处插入一个特殊的 ``RESUME`` 标记，然后继续追踪后续的字节码，形成第二个子图。
+关键的设计是：**graph break 不是直接返回，而是继续执行** 。Dynamo 会在断点处插入一个特殊的 ``RESUME`` 标记，然后继续追踪后续的字节码，形成第二个子图。
 
 这相当于：
 
@@ -154,13 +154,13 @@ Graph Break 的性能影响
 
 graph break 是有代价的。每个 graph break 意味着：
 
-1.**子图之间无法融合 ** ：Subgraph 1 的输出必须写到显存，Subgraph 2 再从显存读入，错失 fusion 机会
+1.**子图之间无法融合** ：Subgraph 1 的输出必须写到显存，Subgraph 2 再从显存读入，错失 fusion 机会
 2.**额外的 kernel launch** ：原来可以 fusion 成一个 kernel 的操作被拆成多个
-3.**额外的 Python 执行 ** ：graph break 之间的代码在 eager 模式下执行，无法享受编译加速
+3.**额外的 Python 执行** ：graph break 之间的代码在 eager 模式下执行，无法享受编译加速
 
-但 graph break 的代价不是均匀的。如果 graph break 发生在模型的前向函数**最外层 ** （比如 ``torch.compile`` 嵌套了一个 ``print`` ），代价相对较小。如果 graph break 发生在**循环内部 ** （比如 ``for i in range(100): print("step", i); x = torch.sin(x)`` ），会导致每轮循环都产生两个子图 + 一次 Python 解释器调用——性能损失很大。
+但 graph break 的代价不是均匀的。如果 graph break 发生在模型的前向函数 **最外层** （比如 ``torch.compile`` 嵌套了一个 ``print`` ），代价相对较小。如果 graph break 发生在 **循环内部** （比如 ``for i in range(100): print("step", i); x = torch.sin(x)`` ），会导致每轮循环都产生两个子图 + 一次 Python 解释器调用——性能损失很大。
 
-一个经验法则是：**graph break 次数越少、位置越靠近函数边界，性能越好。 ** 第 8 章会介绍如何用 ``TORCH_LOGS`` 定位 graph break。
+一个经验法则是：**graph break 次数越少、位置越靠近函数边界，性能越好。** 第 8 章会介绍如何用 ``TORCH_LOGS`` 定位 graph break。
 
 fullgraph=True 的用途
 ============================
@@ -213,9 +213,9 @@ fullgraph=True 的用途
 
 这一节我们介绍了 graph break 的触发条件和实现机制：
 
-- **触发条件 ** ：非 Tensor 操作、不支持的 Python 特性、超出覆盖范围的类型
-- **实现机制 ** ： ``break_graph_if_unsupported`` 装饰器 + ``graph_break()`` 冻结当前子图 + ``resume_execution`` 恢复执行
-- **多个子图的运行时串联 ** ：通过嵌入 ``RESUME`` 标记的字节码实现
+- **触发条件** ：非 Tensor 操作、不支持的 Python 特性、超出覆盖范围的类型
+- **实现机制** ： ``break_graph_if_unsupported`` 装饰器 + ``graph_break()`` 冻结当前子图 + ``resume_execution`` 恢复执行
+- **多个子图的运行时串联** ：通过嵌入 ``RESUME`` 标记的字节码实现
 - **性能影响** ：graph break 阻止了跨边界融合，但 Dynamo 会尽可能追踪能追踪的部分
 
 下一节我们来看第 3 章的最后一个话题：缓存与重新编译——一个 code object 的缓存链表是怎么维护的，以及重新编译的触发条件。

@@ -61,7 +61,7 @@
 结果不一致
 ============
 
-** 编译结果与 eager 模式结果不同 **
+**编译结果与 eager 模式结果不同**
 
 当编译后的输出与 eager 模式的输出存在差异时（精度问题）：
 
@@ -71,23 +71,23 @@
 
 这会生成最小复现脚本。常见原因：
 
-1.** 浮点精度差异 **：Triton 和 CUDA 的归约顺序可能不同，导致微小差异。这是正常的，通常差异在 1e-6 级别。如果差异过大，检查是否误用了 ``tf32`` 或 ``fp16`` 。
+1.**浮点精度差异**：Triton 和 CUDA 的归约顺序可能不同，导致微小差异。这是正常的，通常差异在 1e-6 级别。如果差异过大，检查是否误用了 ``tf32`` 或 ``fp16`` 。
 
-2.** 随机数生成差异 **：编译后的 dropout 等随机操作可能与 eager 模式顺序不同。设置相同的随机种子：
+2.**随机数生成差异**：编译后的 dropout 等随机操作可能与 eager 模式顺序不同。设置相同的随机种子：
 
    .. code-block:: python
 
       torch.manual_seed(42)
       torch.cuda.manual_seed_all(42)
 
-3.**In-place 操作语义 ** ：功能化（functionalization）可能改变了 in-place 操作的语义。检查是否在编译图中正确处理了 in-place 操作的副作用。
+3.**In-place 操作语义** ：功能化（functionalization）可能改变了 in-place 操作的语义。检查是否在编译图中正确处理了 in-place 操作的副作用。
 
 性能比 Eager 还差
 ====================
 
-**首次运行很慢 ** （正常）。编译本身有开销。首轮训练通常比 eager 慢，后续轮次会更快。
+**首次运行很慢** （正常）。编译本身有开销。首轮训练通常比 eager 慢，后续轮次会更快。
 
-**Graph break 过多 ** 。如果模型中有大量 graph break，编译后的性能可能不如 eager：
+**Graph break 过多** 。如果模型中有大量 graph break，编译后的性能可能不如 eager：
 
 .. code-block:: bash
 
@@ -105,7 +105,7 @@
 - 使用 ``fullgraph=True`` 强制无 graph break
 - 将 graph break 的代码用 ``torch.compiler.disable`` 隔离
 
-**Kernel launch 开销过大 ** 。如果 Inductor 生成了大量小 kernel：
+**Kernel launch 开销过大** 。如果 Inductor 生成了大量小 kernel：
 
 .. code-block:: bash
 
@@ -359,7 +359,7 @@ Export 模式下的常见问题
    decompositions = get_decompositions([aten._unsafe_view])
    exported = torch.export.export(model, args, decompositions=decompositions)
 
-** 错误 2：动态形状导致的 export 失败 **
+**错误 2：动态形状导致的 export 失败**
 
 .. code-block:: text
 
@@ -376,7 +376,7 @@ Export 模式下的常见问题
    }
    exported = torch.export.export(model, (x,), dynamic_shapes=dynamic_shapes)
 
-** 错误 3：Control flow 不支持**
+**错误 3：Control flow 不支持**
 
 .. code-block:: text
 
@@ -450,8 +450,8 @@ Cache Poisoning（缓存中毒）
 
 缓存中毒很少见，但可能在以下情况发生：
 
-1. **全局状态被修改 ** ：编译时假设的全局状态在运行时被改变
-2.**张量的元数据变化但 guard 没有捕获 ** ：如 ``requires_grad`` 变化
+1. **全局状态被修改** ：编译时假设的全局状态在运行时被改变
+2.**张量的元数据变化但 guard 没有捕获** ：如 ``requires_grad`` 变化
 3.**自定义 Python 对象的相等性判断异常** ： ``__eq__`` 实现不正确
 
 如何清除和失效缓存
@@ -581,8 +581,8 @@ AMP 和 torch.compile 的配合需要特别注意顺序：
 
 AMP 与 compile 配合时的常见问题：
 
-1. **精度不匹配 ** ：某些操作在 FP16 下精度不足，编译后可能放大误差
-2.**Loss scaling 失效 ** ：编译后的 autograd 可能改变梯度 scale 的行为
+1. **精度不匹配** ：某些操作在 FP16 下精度不足，编译后可能放大误差
+2.**Loss scaling 失效** ：编译后的 autograd 可能改变梯度 scale 的行为
 3.**Dynamic shapes + AMP** ：同时启用时，Triton 生成的 kernel 需要同时处理数据类型转换和符号形状，可能降低融合效率
 
 .. code-block:: python
@@ -713,9 +713,9 @@ MaxAutotune 失败
 
 常见原因：
 
-1.**显存不足 ** ：max-autotune 需要额外显存来并行基准测试多个 kernel 变体
-2.**编译超时 ** ：某些 kernel 的 autotune 空间过大
-3.**Triton 编译错误 ** ：autotune 生成的某些 kernel 变体无法通过 Triton 编译
+1.**显存不足** ：max-autotune 需要额外显存来并行基准测试多个 kernel 变体
+2.**编译超时** ：某些 kernel 的 autotune 空间过大
+3.**Triton 编译错误** ：autotune 生成的某些 kernel 变体无法通过 Triton 编译
 
 解决方案：
 

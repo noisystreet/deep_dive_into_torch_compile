@@ -4,15 +4,15 @@
 Kernel Launch
 =============
 
-代码生成完成后，Inductor 需要将生成的 kernel 组织为可执行的调用序列。这一过程由 **Wrapper 代码生成器 ** 处理——它生成 Python 或 C++ 代码，负责在运行时 launch 所有 kernel。
+代码生成完成后，Inductor 需要将生成的 kernel 组织为可执行的调用序列。这一过程由 **Wrapper 代码生成器** 处理——它生成 Python 或 C++ 代码，负责在运行时 launch 所有 kernel。
 
 Wrapper 的角色
 =================
 
 Wrapper 层（即 wrapper 代码生成器）位于 Kernel 代码和运行时执行之间。它的职责是：
 
-1.**生成 launch 顺序 ** ：按照 Scheduler 确定的依赖关系，依次调用每个 kernel
-2.**管理 buffer 生命周期 ** ：分配临时 buffer、处理 buffer 复用
+1.**生成 launch 顺序** ：按照 Scheduler 确定的依赖关系，依次调用每个 kernel
+2.**管理 buffer 生命周期** ：分配临时 buffer、处理 buffer 复用
 3.**处理输入/输出** ：将用户输入映射到 kernel 参数，将 kernel 输出映射回用户返回值
 
 .. code-block:: text
@@ -126,8 +126,8 @@ Buffer 管理与复用
 
 Wrapper 的一个关键职责是管理 buffer 的分配和复用。Inductor 在 scheduler 阶段就确定了每个 buffer 的 lifetime，wrapper 根据这个信息决定：
 
-- **分配时机 ** ：在第一个需要它的 kernel 之前分配
-- **复用策略 ** ：如果两个 buffer 的 lifetime 不重叠，可以复用同一块显存
+- **分配时机** ：在第一个需要它的 kernel 之前分配
+- **复用策略** ：如果两个 buffer 的 lifetime 不重叠，可以复用同一块显存
 - **释放时机** ：在最后一个使用它的 kernel 之后释放
 
 .. code-block:: python
@@ -199,10 +199,10 @@ C++ wrapper 被编译为 ``.so`` ，通过 ``ctypes`` 或 ``torch.utils.cpp_exte
 
 这一节介绍了 kernel launch 的机制：
 
-- **Wrapper 角色 ** ：生成 launch 代码，管理 buffer 生命周期
+- **Wrapper 角色** ：生成 launch 代码，管理 buffer 生命周期
 - **GPU launch** ：Python wrapper 调用 Triton kernel，支持异步执行
-- **Buffer 复用 ** ：通过 lifetime 分析复用存储，降低峰值显存
-- **Stream 管理 ** ：可选的多 stream 并发执行
+- **Buffer 复用** ：通过 lifetime 分析复用存储，降低峰值显存
+- **Stream 管理** ：可选的多 stream 并发执行
 - **C++ Wrapper** ：替代 Python wrapper 以减少解释器开销
 
 至此，第 6 章内容全部完成。下一章我们将深入 Triton 编程——了解 Triton 语言本身、自定义 kernel 的编写方法、以及 Triton 与 CUDA 的对比。

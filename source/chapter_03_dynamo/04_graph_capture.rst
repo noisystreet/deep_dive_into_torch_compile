@@ -117,14 +117,14 @@ VariableTracker：一切皆变量
 
 Proxy 的作用很重要：它既是一个 FX 节点（在图中有位置），又是一个"假张量"（可以像 Tensor 一样传递）。后续的操作（比如将 sin 的结果传给 add）通过引用 proxy 而不是引用具体数值，这样就自动建立了图的数据依赖关系。
 
-**Proxy 是连接符号执行和 FX Graph 的桥梁。 **InstructionTranslator 看到的是 ``TensorVariable(proxy)`` ，而 ``proxy`` 内部持有对 FX Graph 中某个节点的引用。
+**Proxy 是连接符号执行和 FX Graph 的桥梁。**InstructionTranslator 看到的是 ``TensorVariable(proxy)`` ，而 ``proxy`` 内部持有对 FX Graph 中某个节点的引用。
 
 FakeTensor：符号执行中的"假"张量
 =========================================
 
 这里有一个关键问题：当 Dynamo 执行 ``torch.sin(x)`` 时，图捕获是成功了，但 ``torch.sin`` 的实际计算并没有发生。那如果后续代码依赖 ``x.sin()`` 的结果（比如检查它的形状、dtype 等），Dynamo 怎么处理？
 
-答案是**FakeTensor** 。Dynamo 在开始符号执行之前，会将所有输入张量替换为 ``FakeTensor`` 。FakeTensor 具有真实张量的所有元数据（形状、dtype、device），但不包含实际数据。
+答案是 **FakeTensor** 。Dynamo 在开始符号执行之前，会将所有输入张量替换为 ``FakeTensor`` 。FakeTensor 具有真实张量的所有元数据（形状、dtype、device），但不包含实际数据。
 
 .. code-block:: python
    :caption: FakeTensor 的简化示意

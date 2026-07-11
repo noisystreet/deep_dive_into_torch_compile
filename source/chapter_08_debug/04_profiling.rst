@@ -133,11 +133,11 @@ Inductor 在 ``max-autotune`` 模式下会自动对 kernel 做基准测试。你
 
 使用 profiler 数据识别性能瓶颈：
 
-**Kernel launch 开销 ** 。如果 profiler 中 ``cudaLaunchKernel`` 的 CPU 时间占比很高（>20%），说明 kernel 太小、launch 次数太多。解决方案：
+**Kernel launch 开销** 。如果 profiler 中 ``cudaLaunchKernel`` 的 CPU 时间占比很高（>20%），说明 kernel 太小、launch 次数太多。解决方案：
 - 减少 graph break，让 Scheduler 融合更多操作
 - 减小 ``TORCHINDUCTOR_MAX_AUTOTUNE`` 的限制
 
-**内存带宽瓶颈 ** 。如果 kernel 的算术强度很低（计算量小、数据量大），说明受内存带宽限制。解决方案：
+**内存带宽瓶颈** 。如果 kernel 的算术强度很低（计算量小、数据量大），说明受内存带宽限制。解决方案：
 - 进一步融合 kernel，减少中间结果写回
 - 使用更小的数据类型（FP16、BF16）
 
@@ -369,11 +369,11 @@ torch.profiler + torch.compile 高级分析
 Compiled 模式的显存分配特点
 ----------------------------------
 
-编译后的模型通常比 eager 模式**使用更多显存 ** ，原因如下：
+编译后的模型通常比 eager 模式 **使用更多显存** ，原因如下：
 
-1.**中间结果持久化 ** ：为了支持反向传播，编译图会保留更多的中间 tensor
-2.**权重梯度累积 ** ：编译后的 kernel 可能延长某些 tensor 的生命周期
-3.**编译缓存 ** ：Triton kernel 的代码缓存和参数缓存会占用少量显存
+1.**中间结果持久化** ：为了支持反向传播，编译图会保留更多的中间 tensor
+2.**权重梯度累积** ：编译后的 kernel 可能延长某些 tensor 的生命周期
+3.**编译缓存** ：Triton kernel 的代码缓存和参数缓存会占用少量显存
 
 .. note::
 
@@ -462,9 +462,9 @@ Compiled 模式的显存分配特点
 
 编译后的模型可能因为以下原因导致显存泄漏：
 
-1.**编译缓存不断增长 ** ：如果输入形状不断变化，Dynamo 会持续生成新的 kernel 变体
+1.**编译缓存不断增长** ：如果输入形状不断变化，Dynamo 会持续生成新的 kernel 变体
 2.**未被释放的中间 tensor** ：编译图的 autograd 中间结果未被正确释放
-3.**CUDA Graph 重放缓冲区 ** ：使用 CUDA Graph 时，需要有意识地管理重放缓冲区
+3.**CUDA Graph 重放缓冲区** ：使用 CUDA Graph 时，需要有意识地管理重放缓冲区
 
 检测显存泄漏的标准方法：
 

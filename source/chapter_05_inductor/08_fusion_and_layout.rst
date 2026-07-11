@@ -61,7 +61,7 @@ Fusion regions 的思路是：
 
 除了操作融合，Inductor 还通过布局优化来减少内存访问开销。
 
-**内存布局的重要性 ** ：在 GPU 上，全局内存的访问模式直接影响 kernel 的性能。连续内存访问可以利用 GPU 的内存合并（memory coalescing）特性，每次内存事务传输 128 字节。不连续的访问则会导致多次独立的事务，降低有效带宽。
+**内存布局的重要性** ：在 GPU 上，全局内存的访问模式直接影响 kernel 的性能。连续内存访问可以利用 GPU 的内存合并（memory coalescing）特性，每次内存事务传输 128 字节。不连续的访问则会导致多次独立的事务，降低有效带宽。
 
 Inductor 的 ``ir.py`` 中定义了多种布局类型：
 
@@ -124,7 +124,7 @@ Inductor 的 ``ir.py`` 中定义了多种布局类型：
 
 这一节介绍了融合与布局优化的具体策略：
 
-- **三种融合模式 ** ：Pointwise+Pointwise、Pointwise+Reduction、TemplateBuffer+Pointwise
+- **三种融合模式** ：Pointwise+Pointwise、Pointwise+Reduction、TemplateBuffer+Pointwise
 - **Fusion Regions** ：在 FX Graph 级别预先规划融合区域
-- **布局优化 ** ：通过 ``FlexibleLayout`` 让 codegen 选择最优内存布局
+- **布局优化** ：通过 ``FlexibleLayout`` 让 codegen 选择最优内存布局
 - **max-autotune 融合** ：基于运行时基准测试的融合决策

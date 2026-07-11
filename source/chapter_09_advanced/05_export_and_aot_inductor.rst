@@ -4,9 +4,9 @@
 Export 与 AOTInductor 离线部署
 ======================================
 
-前几章我们追踪的主要是 **在线 JIT 编译 ** 路径：每次 ``torch.compile(model)(x)`` 调用时，Dynamo 捕获图、Inductor 生成 kernel，编译结果缓存在内存或磁盘中供后续命中。这条路径适合训练和在 Python 进程内做推理服务。
+前几章我们追踪的主要是 **在线 JIT 编译** 路径：每次 ``torch.compile(model)(x)`` 调用时，Dynamo 捕获图、Inductor 生成 kernel，编译结果缓存在内存或磁盘中供后续命中。这条路径适合训练和在 Python 进程内做推理服务。
 
-但在生产部署中，常见需求是：**在部署前一次性编译好所有 kernel，在 C++ 运行时直接加载 ``.so``，完全消除 Python 端的编译延迟 ** 。PyTorch 为此提供了 ``torch.export`` 和**AOTInductor** 两条互补的 API。这一节梳理它们与 ``torch.compile`` 的关系，以及典型的离线部署流程。
+但在生产部署中，常见需求是：**在部署前一次性编译好所有 kernel，在 C++ 运行时直接加载 ``.so``，完全消除 Python 端的编译延迟** 。PyTorch 为此提供了 ``torch.export`` 和 **AOTInductor** 两条互补的 API。这一节梳理它们与 ``torch.compile`` 的关系，以及典型的离线部署流程。
 
 torch.compile vs torch.export
 =================================
@@ -200,10 +200,10 @@ AOTInductor 路径几乎总是使用 **C++ wrapper** ，因为部署目标就是
 
 AOTInductor 当前仍有一些约束，部署前需要验证：
 
-- **控制流 ** ： ``cond`` 、 ``while_loop`` 等需要 export 支持的控制流算子，覆盖范围在持续扩展
-- **自定义算子 ** ：须通过 ``torch.library`` 注册并提供 meta kernel（见第 9.4 节）
-- **动态形状 ** ：必须在 export 阶段用 ``Dim`` 声明，不能像 ``torch.compile`` 那样依赖运行时 guard 自动发现
-- **权重更新 ** ：离线 `.so` 中的常量需与训练 checkpoint 版本匹配；热更新权重需要额外的加载机制
+- **控制流** ： ``cond`` 、 ``while_loop`` 等需要 export 支持的控制流算子，覆盖范围在持续扩展
+- **自定义算子** ：须通过 ``torch.library`` 注册并提供 meta kernel（见第 9.4 节）
+- **动态形状** ：必须在 export 阶段用 ``Dim`` 声明，不能像 ``torch.compile`` 那样依赖运行时 guard 自动发现
+- **权重更新** ：离线 `.so` 中的常量需与训练 checkpoint 版本匹配；热更新权重需要额外的加载机制
 
 小结
 ======

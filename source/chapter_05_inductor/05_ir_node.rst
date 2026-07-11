@@ -178,8 +178,8 @@ IR 的设计思想与同类对比见 :ref:`ir-design-philosophy`。
 
 这一节介绍了 Inductor 的核心中间表示 IRNode：
 
-- **三种主要 IR 类型 ** ： ``Pointwise`` （逐元素）、 ``Reduction`` （归约）、 ``TemplateBuffer`` （预定义模板）
-- **Lowering 映射表 ** ：通过 ``register_lowering`` 装饰器将 FX 操作注册到 IR 构造函数
-- **ops 原语 ** ：IR 层面的计算描述，在 codegen 时翻译为具体硬件代码
+- **三种主要 IR 类型** ： ``Pointwise`` （逐元素）、 ``Reduction`` （归约）、 ``TemplateBuffer`` （预定义模板）
+- **Lowering 映射表** ：通过 ``register_lowering`` 装饰器将 FX 操作注册到 IR 构造函数
+- **ops 原语** ：IR 层面的计算描述，在 codegen 时翻译为具体硬件代码
 - **inner_fn** ：IR 节点的核心——描述「如何在索引下计算值」
 - **设计思想** ：内存中心、Lazy Fusion、与 FX/XLA/MLIR 等的定位对比见 :ref:`ir-design-philosophy`

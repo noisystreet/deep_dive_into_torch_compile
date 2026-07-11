@@ -64,7 +64,7 @@ Inductor 的使命： ** 在保留 PyTorch 语义的前提下，把 FX Graph 翻
    Codegen           指令生成        IRNode → Triton/C++ 源码
    （第 6 章）                       GEMM → 模板，sin+cos → 生成
 
-Pattern Matcher（第 5.8 节）在 FX 层做**跨 op 的代数替换 ** ；Scheduler 在 IR 层做**内存/并行维度的融合**——前者看不见 layout，后者看不见 ``aten`` 名字，两者互补而非重复。
+Pattern Matcher（第 5.8 节）在 FX 层做 **跨 op 的代数替换** ；Scheduler 在 IR 层做 **内存/并行维度的融合**——前者看不见 layout，后者看不见 ``aten`` 名字，两者互补而非重复。
 
 这一节我们从整体上了解 Inductor 的架构和工作流程。
 
@@ -174,9 +174,9 @@ Inductor 最重要的设计哲学是 **Define-by-Run IR** 。这是 Inductor 设
 选择与放弃
 ----------------
 
-**传统静态 IR 路线 ** （类似 LLVM）：前端一次性构建完整 IR → 多轮 pass 优化 → 后端 lowering。优点是优化 pass 可以反复扫描整张图；缺点是 IR 必须提前表达所有语义，与 PyTorch「动态构建计算」的风格格格不入——视图、别名、符号 shape 在静态 IR 里很难写对。
+**传统静态 IR 路线** （类似 LLVM）：前端一次性构建完整 IR → 多轮 pass 优化 → 后端 lowering。优点是优化 pass 可以反复扫描整张图；缺点是 IR 必须提前表达所有语义，与 PyTorch「动态构建计算」的风格格格不入——视图、别名、符号 shape 在静态 IR 里很难写对。
 
-**Define-by-Run 路线 ** ：每遇到一个 FX 节点，立刻 ``lower`` 出对应 IRNode 并注册到 ``GraphLowering`` 。IR 的生长顺序与 PyTorch 执行顺序一致，**语义天然对齐 eager** 。代价是某些需要「看全图」的优化必须延后到 Scheduler / FX pass 阶段做，不能指望单一静态 IR pass 解决一切。
+**Define-by-Run 路线** ：每遇到一个 FX 节点，立刻 ``lower`` 出对应 IRNode 并注册到 ``GraphLowering`` 。IR 的生长顺序与 PyTorch 执行顺序一致，**语义天然对齐 eager** 。代价是某些需要「看全图」的优化必须延后到 Scheduler / FX pass 阶段做，不能指望单一静态 IR pass 解决一切。
 
 .. code-block:: text
 
@@ -190,11 +190,11 @@ Inductor 最重要的设计哲学是 **Define-by-Run IR** 。这是 Inductor 设
 
 这意味着：
 
-1.**每个 IRNode 的构造就是 lower 的过程 **——没有单独的"IR 构建阶段"
-2.**IRNode 直接捕获语义 **——``Pointwise`` 节点知道它是逐元素操作， ``Reduction`` 节点知道它是归约操作
-3.**Codegen 直接关联到 IR 类型 **——codegen 时只需要遍历 IRNode 列表，根据类型生成代码
+1.**每个 IRNode 的构造就是 lower 的过程**——没有单独的"IR 构建阶段"
+2.**IRNode 直接捕获语义**——``Pointwise`` 节点知道它是逐元素操作， ``Reduction`` 节点知道它是归约操作
+3.**Codegen 直接关联到 IR 类型**——codegen 时只需要遍历 IRNode 列表，根据类型生成代码
 
-这也是第 2.1 节**Define-by-Run** 原则在 Inductor 中的落地：不强迫 PyTorch 程序先变成另一种 IR 语言，而是 **让 IR 跟着 PyTorch 程序的轨迹长出来** 。
+这也是第 2.1 节 **Define-by-Run** 原则在 Inductor 中的落地：不强迫 PyTorch 程序先变成另一种 IR 语言，而是 **让 IR 跟着 PyTorch 程序的轨迹长出来** 。
 
 关于 lowering、scheduler、codegen 的细节，我们会在本章接下来的小节中逐一深入。
 
@@ -218,10 +218,10 @@ Inductor 有两种运行模式，通过 ``mode`` 参数控制：
 
 这一节从整体上了解了 Inductor 的工作流程：
 
-- **Inductor 的核心流程 ** ：aot_autograd（decomposition 见第 4.6 节）→ FX Passes（见第 5.2 节）→ Lowering → Scheduler → Codegen
-- **主入口 ** ： ``compile_fx.py`` 中的 ``compile_fx`` / ``compile_fx_inner``
-- **架构理念 ** ：Define-by-Run IR；四层分工（FX Pass → Lowering → Scheduler → Codegen）；IR 设计思想与同类 IR 对比见 :ref:`ir-design-philosophy`
-- **设计张力 ** ：IR 质量决定融合上限（virtualization 案例见第 5.4 节）
+- **Inductor 的核心流程** ：aot_autograd（decomposition 见第 4.6 节）→ FX Passes（见第 5.2 节）→ Lowering → Scheduler → Codegen
+- **主入口** ： ``compile_fx.py`` 中的 ``compile_fx`` / ``compile_fx_inner``
+- **架构理念** ：Define-by-Run IR；四层分工（FX Pass → Lowering → Scheduler → Codegen）；IR 设计思想与同类 IR 对比见 :ref:`ir-design-philosophy`
+- **设计张力** ：IR 质量决定融合上限（virtualization 案例见第 5.4 节）
 - **运行模式** ：default（heuristic）和 max-autotune（枚举搜索）
 
 接下来的小节将逐一深入 Inductor 的每个环节。

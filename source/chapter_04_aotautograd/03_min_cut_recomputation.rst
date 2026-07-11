@@ -11,7 +11,7 @@ Min-Cut 重计算
 
 上一节的朴素分区将所有被反向引用的前向中间结果都保存下来——这就是"最大化保存，最小化重计算"的策略。它的优点是实现简单，缺点是需要大量显存来保存中间结果。
 
-AOTAutograd 提供了另一种分区策略：**min-cut 重计算分区 ** （min-cut rematerialization partition），它通过"用计算换内存"的方式减少显存占用。
+AOTAutograd 提供了另一种分区策略：**min-cut 重计算分区** （min-cut rematerialization partition），它通过"用计算换内存"的方式减少显存占用。
 
 核心思路
 ==============
@@ -113,7 +113,7 @@ min_cut_rematerialization_partition 的实现
 
 ``min_cut_rematerialization_partition`` 函数实现在 ``pytorch/torch/_functorch/partitioners.py`` 第 3550 行。它的算法可以分为四个步骤。
 
-**步骤 1：节点分类（classify_nodes） **
+**步骤 1：节点分类（classify_nodes）**
 
 首先将联合图中的每个节点分为三类：
 
@@ -130,7 +130,7 @@ min_cut_rematerialization_partition 的实现
 - 节点的使用者（users）分布：被前向节点使用、被反向节点使用、还是两者都使用？
 - 节点的可重计算性：不是所有操作都可以重计算（例如随机数生成操作通常不可重计算）
 
-** 步骤 2：构建 min-cut 图 **
+**步骤 2：构建 min-cut 图**
 
 对于候选节点集合，构建一个最大流最小割图。这个图中：
 
@@ -156,7 +156,7 @@ min_cut_rematerialization_partition 的实现
        cut --> save_side["源点侧节点 → 保存（不重计算）<br/>占用显存，反向直接使用"]
        cut --> remat_side["汇点侧节点 → 丢弃（反向重计算）<br/>节省显存，反向重新计算"]
 
-** 步骤 3：执行 max-flow 算法**
+**步骤 3：执行 max-flow 算法**
 
 在构建好的图上执行最大流算法，找到最小割。最小割将节点划分为两组：保存 vs 重计算。
 
@@ -175,7 +175,7 @@ min_cut_rematerialization_partition 的实现
        ...
        反向中重新计算"]
 
-算法的核心目标是： **尽可能少保存中间结果，同时确保反向的额外计算开销不超过收益 ** 。
+算法的核心目标是： **尽可能少保存中间结果，同时确保反向的额外计算开销不超过收益** 。
 
 **步骤 4：生成前向和反向子图**
 

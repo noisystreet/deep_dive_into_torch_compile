@@ -49,8 +49,8 @@ Reduce-overhead 模式
 
 在 default 基础上额外启用：
 
-- **CUDA Graph 捕获 ** ：将多个 kernel launch 合并为一个图
-- **更激进的融合 ** ：减少 kernel 总数
+- **CUDA Graph 捕获** ：将多个 kernel launch 合并为一个图
+- **更激进的融合** ：减少 kernel 总数
 
 .. code-block:: python
 
@@ -88,7 +88,7 @@ Max-autotune 模式
 Progressive 模式
 =====================
 
-渐进式编译的思路是**先快速开始训练，再逐步优化 ** ：
+渐进式编译的思路是 **先快速开始训练，再逐步优化** ：
 
 .. code-block:: python
 
@@ -125,9 +125,9 @@ Progressive 模式
 
 ``dynamic=True`` 改变了编译策略：
 
-- **更多使用符号形状 ** ：guard 表达式中使用 ``s0`` 、 ``s1`` 等符号变量代替具体数值
-- **更少的重新编译 ** ：形状在合理范围内的变化不会触发重新编译
-- **可能降低单次性能 ** ：生成的 kernel 针对通用形状优化，不如固定形状的极端优化版本
+- **更多使用符号形状** ：guard 表达式中使用 ``s0`` 、 ``s1`` 等符号变量代替具体数值
+- **更少的重新编译** ：形状在合理范围内的变化不会触发重新编译
+- **可能降低单次性能** ：生成的 kernel 针对通用形状优化，不如固定形状的极端优化版本
 
 选择合适策略的决策树
 ============================
@@ -146,7 +146,7 @@ Progressive 模式
 兼容性注意事项
 ====================
 
-**CUDA Graph 限制 ** 。CUDA Graph 在以下场景会回退：
+**CUDA Graph 限制** 。CUDA Graph 在以下场景会回退：
 - 包含 CPU 操作（如 ``print`` 、 ``torch.tensor.item`` ）
 - 动态控制流（ ``if x.sum() > 0`` ）
 - 动态形状
@@ -157,6 +157,6 @@ Progressive 模式
 
    TORCH_LOGS="+perf_hints" python train.py
 
-**Tensor Core 使用 ** 。Tensor Core 要求矩阵尺寸是 8 或 16 的倍数。 ``max-autotune`` 模式下的 padding 优化可以自动对齐非对齐的矩阵乘。
+**Tensor Core 使用** 。Tensor Core 要求矩阵尺寸是 8 或 16 的倍数。 ``max-autotune`` 模式下的 padding 优化可以自动对齐非对齐的矩阵乘。
 
 **内存使用** 。 ``max-autotune`` 模式可能会因为更激进的融合而增加峰值显存使用。如果遇到 OOM，尝试减少融合大小或切换到 ``default`` 模式。

@@ -182,7 +182,7 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
 
 **"RuntimeError: backward() was called after optimizer.step()"** 。如果编译模型在 ``backward()`` 上出错，检查是否在 ``backward()`` 之前调用了 ``optimizer.step()`` 。这在编译模式下更常见，因为编译后的图可能改变了操作顺序。
 
-**显存泄漏 ** 。如果编译后的训练循环出现显存泄漏，尝试：
+**显存泄漏** 。如果编译后的训练循环出现显存泄漏，尝试：
 
 .. code-block:: python
 
@@ -191,7 +191,7 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
    torch.cuda.empty_cache()
    gc.collect()
 
-**编译时间过长 ** 。如果模型很大（如 >10 亿参数），编译时间可能超过 10 分钟。使用 ``progressive`` 模式：
+**编译时间过长** 。如果模型很大（如 >10 亿参数），编译时间可能超过 10 分钟。使用 ``progressive`` 模式：
 
 .. code-block:: bash
 
@@ -257,9 +257,9 @@ torch.compile 不需要为梯度累积做特殊处理——每次 ``forward/back
 
 ``reduce-overhead`` 在推理场景中效果显著，但在训练中需要谨慎使用：
 
-1.**CUDA Graph 与反向传播的冲突 ** 。CUDA Graph 要求计算图在捕获后完全固定。但训练时，反向传播的计算图依赖于前向传播的输出——这本身是确定的，但 autograd graph 的构建涉及一些 Python 层面的操作，可能导致 graph break。
+1.**CUDA Graph 与反向传播的冲突** 。CUDA Graph 要求计算图在捕获后完全固定。但训练时，反向传播的计算图依赖于前向传播的输出——这本身是确定的，但 autograd graph 的构建涉及一些 Python 层面的操作，可能导致 graph break。
 
-2.**梯度更新模式变化 ** 。CUDA Graph 捕获后，权重更新是通过 ``optimizer.step()`` 在 Python 层面完成的，不在 Graph 内。这意味着 CUDA Graph 只覆盖 ``forward + backward`` 部分，**没有覆盖 optimizer step** 。
+2.**梯度更新模式变化** 。CUDA Graph 捕获后，权重更新是通过 ``optimizer.step()`` 在 Python 层面完成的，不在 Graph 内。这意味着 CUDA Graph 只覆盖 ``forward + backward`` 部分，**没有覆盖 optimizer step** 。
 
 3.**数值精度差异** 。由于 kernel 融合改变了浮点运算的顺序（如 A+B+C 可能变为 (A+B)+C 或 A+(B+C)）， ``reduce-overhead`` 模式可能导致训练结果与 eager 模式略有不同。对于对精度敏感的训练任务，这种差异可能影响模型收敛。
 
@@ -348,8 +348,8 @@ Gradient Scaling 与编译图的交互
 
 对于长时间运行的训练任务（如大模型预训练），编译策略需要额外考虑：
 
-- **累积编译时间 ** ：如果模型在训练过程中因数据分布变化而频繁重新编译，累积的编译时间可能抵消编译带来的加速收益
-- **动态数据形状 ** ：图像大小变化、序列长度分布变化都会触发重新编译
+- **累积编译时间** ：如果模型在训练过程中因数据分布变化而频繁重新编译，累积的编译时间可能抵消编译带来的加速收益
+- **动态数据形状** ：图像大小变化、序列长度分布变化都会触发重新编译
 - **分布式环境** ：多 GPU 场景下的编译时间线性增长（详见 :ref:`multi-gpu-scenarios`）
 
 示例代码

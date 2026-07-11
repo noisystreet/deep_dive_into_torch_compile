@@ -13,7 +13,7 @@ FX Passes：图优化
 
 读者第一次看到 ``compile_fx_inner`` 的流水线，常会问： **既然都是改 FX Graph，为什么不把所有 pass 攒到最后、对 lowering 前的那一张图统一跑一遍？**
 
-答案是： ** 编译过程中间的图「形状」和「语义」在变**——同一张图在 Dynamo 出口、joint graph 内部、分区后的前向/反向子图上，能安全做的优化完全不同。FX Passes 的分阶段设计，本质是 ** 在正确的抽象层、正确的时机做正确的变换**。
+答案是： **编译过程中间的图「形状」和「语义」在变**——同一张图在 Dynamo 出口、joint graph 内部、分区后的前向/反向子图上，能安全做的优化完全不同。FX Passes 的分阶段设计，本质是 **在正确的抽象层、正确的时机做正确的变换**。
 
 编译过程中图的四次「变形」
 ----------------------------------
@@ -60,7 +60,7 @@ FX Passes：图优化
 
 **关键 invariant** ：pass 只能作用于 **当前已经存在** 的图结构。阶段 A 还没有反向子图；阶段 B 的 joint 上可以做 **跨前/反向** 的常量折叠、 ``pad_mm`` 等，但尚未分区；阶段 C 才在 **已分区、已 functionalize** 的子图上做 conv+relu、SDPA→Flash 等替换；阶段 D 之后 FX 节点语义名消失，只能做 IR 级融合。
 
-**推理路径的差异 ** ：训练时 ``joint_graph_passes`` 由 Inductor 的 ``partition_fn`` （ ``compile_fx.py`` 2255–2270 行）在 ``min_cut_rematerialization_partition``**之前 ** 调用；纯推理（ ``is_inference=True`` ）不走分区，改在 ``compile_fx_forward`` （2413–2439 行）里对**单张前向图** 调用 ``_recursive_joint_graph_passes``——函数名带 joint，但此时图里通常还没有反向节点，pass 规则会按推理语境生效。
+**推理路径的差异** ：训练时 ``joint_graph_passes`` 由 Inductor 的 ``partition_fn`` （ ``compile_fx.py`` 2255–2270 行）在 ``min_cut_rematerialization_partition``**之前** 调用；纯推理（ ``is_inference=True`` ）不走分区，改在 ``compile_fx_forward`` （2413–2439 行）里对 **单张前向图** 调用 ``_recursive_joint_graph_passes``——函数名带 joint，但此时图里通常还没有反向节点，pass 规则会按推理语境生效。
 
 分阶段的设计逻辑
 --------------------
@@ -74,47 +74,47 @@ FX Passes：图优化
      - 此时图长什么样
      - 为什么在这里做
    * - ``pre_grad_passes``
-     - ``aot_module_simplified`` 内、joint trace **之前 ** （ ``aot_autograd.py`` 1161–1220 行；Inductor 回调为 ``run_pre_grad_passes`` ）
+     - ``aot_module_simplified`` 内、joint trace **之前** （ ``aot_autograd.py`` 1161–1220 行；Inductor 回调为 ``run_pre_grad_passes`` ）
      - 单张前向图，Dynamo 刚捕获；IR**尚未** functionalize
      - 减轻 joint trace 负担；在高层算子还在时做 BN folding 等
    * - decomposition + joint trace
-     - AOTAutograd **内部 ** （第 4 章）
+     - AOTAutograd **内部** （第 4 章）
      - 一张 joint graph，含前向+反向节点
-     - 不是 ``fx_passes/`` 里的 pass，但会**改变节点集合**
+     - 不是 ``fx_passes/`` 里的 pass，但会 **改变节点集合**
    * - ``joint_graph_passes``
-     - ``partition_fn`` **之前 ** （ ``compile_fx.py`` 2266–2270 行；实现见 ``joint_graph.py`` 619–690 行）
+     - ``partition_fn`` **之前** （ ``compile_fx.py`` 2266–2270 行；实现见 ``joint_graph.py`` 619–690 行）
      - 仍是 joint graph（推理则为单张前向图）
-     - ``pad_mm`` 、常量折叠、RNG 替换等需**分区前** 看到完整数据流
+     - ``pad_mm`` 、常量折叠、RNG 替换等需 **分区前** 看到完整数据流
    * - ``post_grad_passes``
-     - ``_compile_fx_inner`` 内、lowering **之前 ** （ ``compile_fx.py`` 1338–1369 行）
-     - 分区后的前向/反向**各一张 ** 子图；IR 已 functionalize
-     - conv+relu、SDPA→Flash 等模式在 decomp 后稳定；前反向**分别 ** 优化
+     - ``_compile_fx_inner`` 内、lowering **之前** （ ``compile_fx.py`` 1338–1369 行）
+     - 分区后的前向/反向 **各一张** 子图；IR 已 functionalize
+     - conv+relu、SDPA→Flash 等模式在 decomp 后稳定；前反向 **分别** 优化
 
-用第 2.1 节的话说：这是**阶段专精 ** 在图优化层的体现——**autograd 负责造图与分区，Inductor FX pass 在造图前、分区前、Lowering 前各收拾一次 ** 。
+用第 2.1 节的话说：这是 **阶段专精** 在图优化层的体现——**autograd 负责造图与分区，Inductor FX pass 在造图前、分区前、Lowering 前各收拾一次** 。
 
 为什么不合并成「一次 pass 跑到底」？
 ------------------------------------------
 
 假设只在 lowering 前跑一次大 pass，会遇到三类硬问题：
 
-**1. Joint trace 成本 **
+**1. Joint trace 成本**
 
-AOTAutograd 要对前向代码做一次** 假反向 **追踪，生成 joint graph。Dynamo 捕获的图若充满 ``x + 0`` 、重复子表达式，joint graph 会** 同比膨胀 **。 ``pre_grad_passes`` 在 trace 前做 CSE、常量折叠、恒等替换，是在** 降低 autograd 追踪的输入规模 **——这是编译时间优化，不是运行时优化。
+AOTAutograd 要对前向代码做一次 **假反向** 追踪，生成 joint graph。Dynamo 捕获的图若充满 ``x + 0`` 、重复子表达式，joint graph 会 **同比膨胀**。 ``pre_grad_passes`` 在 trace 前做 CSE、常量折叠、恒等替换，是在 **降低 autograd 追踪的输入规模**——这是编译时间优化，不是运行时优化。
 
-**2. 模式匹配的可见性 **
+**2. 模式匹配的可见性**
 
-许多 ``post_grad`` 规则匹配**decomposition 之后 ** 的基本算子组合。例如 ``fuse_attention.py`` 匹配的是 SDPA 展开后的子图形态；若在 decomposition 之前跑，模式对不上。反之， ``pre_grad`` 里的 BN folding 需要在**高层算子还在 ** 时识别。 ``joint_graph`` 里的 ``pad_mm`` 则必须在**分区前 ** 看到 joint 上的 matmul 链——挪到 post 分区后，部分跨前/反向的 padding 决策信息已丢失。
+许多 ``post_grad`` 规则匹配 **decomposition 之后** 的基本算子组合。例如 ``fuse_attention.py`` 匹配的是 SDPA 展开后的子图形态；若在 decomposition 之前跑，模式对不上。反之， ``pre_grad`` 里的 BN folding 需要在 **高层算子还在** 时识别。 ``joint_graph`` 里的 ``pad_mm`` 则必须在 **分区前** 看到 joint 上的 matmul 链——挪到 post 分区后，部分跨前/反向的 padding 决策信息已丢失。
 
-**3. 前向与反向的不同优化空间 **
+**3. 前向与反向的不同优化空间**
 
-分区之后， ``post_grad_passes(fwd_gm)`` 与 ``post_grad_passes(bwd_gm)``** 各跑一遍 **（ ``post_grad.py`` 116–117 行注释）。反向图常有 distinct 模式（重计算节点、梯度累积、FSDP bucketing），与前向共享同一套 pass** 函数 **，但应用在** 不同图 **上。若在 joint graph 上统一优化再分区，要么规则无法区分前/反向语境，要么需要 partition-aware 规则，复杂度爆炸——这正是 ``joint_graph_passes`` 与 ``post_grad_passes``** 分工 **而非合并的原因。
+分区之后， ``post_grad_passes(fwd_gm)`` 与 ``post_grad_passes(bwd_gm)``**各跑一遍** （ ``post_grad.py`` 116–117 行注释）。反向图常有 distinct 模式（重计算节点、梯度累积、FSDP bucketing），与前向共享同一套 pass**函数**，但应用在 **不同图** 上。若在 joint graph 上统一优化再分区，要么规则无法区分前/反向语境，要么需要 partition-aware 规则，复杂度爆炸——这正是 ``joint_graph_passes`` 与 ``post_grad_passes``**分工** 而非合并的原因。
 
-因此流水线是 deliberate 的** 「pre → autograd 变形 → joint → partition → post × N」 **，而不是疏忽导致的重复劳动。
+因此流水线是 deliberate 的 **「pre → autograd 变形 → joint → partition → post × N」**，而不是疏忽导致的重复劳动。
 
 源码中的编排入口
 --------------------
 
-``compile_fx`` 把 ``run_pre_grad_passes`` 作为回调传给 ``dynamo_common.aot_autograd`` （ ``compile_fx.py`` 3013–3024 行）。Inductor 自己** 不直接 **在 ``_compile_fx_main`` 里调用 pre_grad——时机由 AOTAutograd 的 ``aot_module_simplified`` 决定，且与**Autograd 缓存 ** 挂钩：
+``compile_fx`` 把 ``run_pre_grad_passes`` 作为回调传给 ``dynamo_common.aot_autograd`` （ ``compile_fx.py`` 3013–3024 行）。Inductor 自己 **不直接** 在 ``_compile_fx_main`` 里调用 pre_grad——时机由 AOTAutograd 的 ``aot_module_simplified`` 决定，且与 **Autograd 缓存** 挂钩：
 
 - **early** ：缓存查找 **之前** 跑 pre_grad（自定义 pass 无 ``uuid()`` 时必须走此路径，否则缓存键无法反映图变化）
 - **late** （默认）：缓存未命中 **之后** 再跑，避免缓存命中时重复做 pass
@@ -166,11 +166,11 @@ FX Passes 分为 **三个阶段** （若把 decomposition 算作 AOTAutograd 内
 pre_grad_passes
 ====================
 
-``pre_grad_passes`` 定义在 `pre_grad.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/pre_grad.py>`__ （286 行起）。经 ``run_pre_grad_passes`` （ ``compile_fx.py`` 2587–2634 行）包装后，作为回调注入 AOTAutograd，在 joint trace**之前 ** 运行。输入是 Dynamo 捕获的原始 FX Graph，尚未进行自动微分。
+``pre_grad_passes`` 定义在 `pre_grad.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/pre_grad.py>`__ （286 行起）。经 ``run_pre_grad_passes`` （ ``compile_fx.py`` 2587–2634 行）包装后，作为回调注入 AOTAutograd，在 joint trace**之前** 运行。输入是 Dynamo 捕获的原始 FX Graph，尚未进行自动微分。
 
 源码在函数文档字符串里明确警告（292–302 行）：**grad 之前的 IR 不是 functional、也未 normalization** ，写 pass 更难——必须正确处理 alias/mutation 与各种 arg schema。因此官方建议：能放到 ``post_grad.py`` 或 ``joint_graph.py`` 的规则尽量后移。
 
-**设计目标 ** ：在 joint trace 发生前**瘦身 **——让 AOTAutograd 追踪更少的节点，生成的 joint graph 更小。这里的优化偏** 结构性、与梯度无关 **：
+**设计目标** ：在 joint trace 发生前 **瘦身**——让 AOTAutograd 追踪更少的节点，生成的 joint graph 更小。这里的优化偏 **结构性、与梯度无关**：
 
 .. code-block:: text
 
@@ -188,9 +188,9 @@ pre_grad_passes
 joint_graph_passes
 ======================
 
-``joint_graph_passes`` （`joint_graph.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/joint_graph.py>`__ 619–690 行）在** 尚未分区 **的 joint graph 上运行（推理时为单张前向图）。Inductor 的 ``partition_fn`` 在调用 ``min_cut_rematerialization_partition``** 之前 **先调用 ``_recursive_joint_graph_passes`` （ ``compile_fx.py`` 2266–2270 行）。
+``joint_graph_passes`` （`joint_graph.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/joint_graph.py>`__ 619–690 行）在 **尚未分区** 的 joint graph 上运行（推理时为单张前向图）。Inductor 的 ``partition_fn`` 在调用 ``min_cut_rematerialization_partition``**之前** 先调用 ``_recursive_joint_graph_passes`` （ ``compile_fx.py`` 2266–2270 行）。
 
-** 设计目标 **：利用** 分区前仍连在一起的 **前向+反向数据流，做 pre/post 都不合适的变换：
+**设计目标**：利用 **分区前仍连在一起的** 前向+反向数据流，做 pre/post 都不合适的变换：
 
 .. code-block:: text
 
@@ -204,18 +204,18 @@ joint_graph_passes
        ├─ pass_patterns（含 pad_mm 等）
        └─ replace_random_passes           # 非 fallback_random 时
 
-``run_joint_graph_passes_on_hops`` （`graph_compile.py` 764–790 行）对 ``invoke_subgraph`` 等高阶算子的** 内嵌子图 **单独跑 joint pass 再缝回主图——与 ``_recursive_joint_graph_passes`` 对 FX 子模块的递归是同一设计思想的两层实现。
+``run_joint_graph_passes_on_hops`` （`graph_compile.py` 764–790 行）对 ``invoke_subgraph`` 等高阶算子的 **内嵌子图** 单独跑 joint pass 再缝回主图——与 ``_recursive_joint_graph_passes`` 对 FX 子模块的递归是同一设计思想的两层实现。
 
-日常阅读源码时，** 抓住 pre → autograd/joint → partition → post(fwd) + post(bwd) 这条主线即可 **； ``joint_graph.py`` 里的 pass 数量少于 pre/post，但对理解「为何不能全部挪到 post_grad」至关重要。
+日常阅读源码时，**抓住 pre → autograd/joint → partition → post(fwd) + post(bwd) 这条主线即可**； ``joint_graph.py`` 里的 pass 数量少于 pre/post，但对理解「为何不能全部挪到 post_grad」至关重要。
 
 post_grad_passes
 =====================
 
-``post_grad_passes`` （`post_grad.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/post_grad.py>`__ 114 行起）在 AOTAutograd 分区与 decomposition** 之后 **、lowering** 之前 **运行。文档字符串写明（116–119 行）：** 此时的 IR 已经 normalization 且 functionalize**。 ``_compile_fx_inner`` 通过 ``_recursive_post_grad_passes`` 对每个子图调用它（ ``compile_fx.py`` 1369 行）；训练时前向、反向 ** 各编译一次**，故 post_grad** 各跑一遍 **。
+``post_grad_passes`` （`post_grad.py <https://github.com/pytorch/pytorch/blob/v2.12.1/torch/_inductor/fx_passes/post_grad.py>`__ 114 行起）在 AOTAutograd 分区与 decomposition**之后**、lowering**之前** 运行。文档字符串写明（116–119 行）：**此时的 IR 已经 normalization 且 functionalize**。 ``_compile_fx_inner`` 通过 ``_recursive_post_grad_passes`` 对每个子图调用它（ ``compile_fx.py`` 1369 行）；训练时前向、反向 **各编译一次**，故 post_grad**各跑一遍**。
 
-** 设计目标 **：在** 基本算子粒度 **上做** 语义级 **替换与布局类优化。此时：
+**设计目标**：在 **基本算子粒度** 上做 **语义级** 替换与布局类优化。此时：
 
-- decomposition 已展开高层算子，pattern 的** 匹配目标稳定 **
+- decomposition 已展开高层算子，pattern 的 **匹配目标稳定**
 - 前向/反向已分离，可对 backward 做专门规则（重计算、FSDP 相关）
 - 尚未 lowering，改 FX 节点仍比改 IRNode 便宜
 
@@ -259,10 +259,10 @@ post_grad_passes
 小结
 ======
 
-- ** 分阶段原因 **：图经历「前向 → joint/decomp → joint pass → 分区 → 前向+反向子图 → lowering」多次变形，pass 必须在** 对应形态与 IR 约束 **上运行
-- **pre_grad_passes** ：joint trace**之前 ** 瘦身；IR**未 **functionalize，写 pass 成本高（ ``pre_grad.py`` 292–302 行）
+- **分阶段原因**：图经历「前向 → joint/decomp → joint pass → 分区 → 前向+反向子图 → lowering」多次变形，pass 必须在 **对应形态与 IR 约束** 上运行
+- **pre_grad_passes** ：joint trace**之前** 瘦身；IR**未**functionalize，写 pass 成本高（ ``pre_grad.py`` 292–302 行）
 - **joint_graph_passes** ： **分区之前** 在 joint（或推理前向）图上做 pad_mm、常量折叠等；由 ``partition_fn`` / ``compile_fx_forward`` 触发
-- **decomposition** ：在 AOTAutograd**内部 ** ，改变节点集合（第 4.6 节）
-- **post_grad_passes** ：lowering**之前 ** 对前向/反向**分别 ** 做语义级模式匹配；IR 已 functionalize（ ``post_grad.py`` 116–119 行）
-- **与 Scheduler 互补 ** ：FX pass 改「算什么」，Scheduler 在 IR 层做 kernel 融合（第 5.6–5.8 节）
+- **decomposition** ：在 AOTAutograd**内部** ，改变节点集合（第 4.6 节）
+- **post_grad_passes** ：lowering**之前** 对前向/反向 **分别** 做语义级模式匹配；IR 已 functionalize（ ``post_grad.py`` 116–119 行）
+- **与 Scheduler 互补** ：FX pass 改「算什么」，Scheduler 在 IR 层做 kernel 融合（第 5.6–5.8 节）
 - **子图递归** ：pre/joint/post 三套入口均通过 ``_recursive_*`` 处理嵌套 ``GraphModule`` ，与高阶算子子图 pass （ ``run_joint_graph_passes_on_hops`` ）配套

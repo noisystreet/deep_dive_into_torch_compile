@@ -77,7 +77,7 @@ TORCH_LOGS 环境变量
 日志输出示例
 ==================
 
-**Dynamo 日志 ** ：显示 graph break 的位置：
+**Dynamo 日志** ：显示 graph break 的位置：
 
 .. code-block:: text
 
@@ -86,7 +86,7 @@ TORCH_LOGS 环境变量
    [dynamo] 生成子图 #0 (3 个节点)
    [dynamo] 生成子图 #1 (5 个节点)
 
-**Inductor 日志 ** ：显示 lowering 和融合过程：
+**Inductor 日志** ：显示 lowering 和融合过程：
 
 .. code-block:: text
 
@@ -94,7 +94,7 @@ TORCH_LOGS 环境变量
    [inductor] lowering aten.cos (fx_node: %cos)
    [inductor] Pointwise + Pointwise 融合成功
 
-**输出代码日志 ** ：显示生成的 Triton kernel：
+**输出代码日志** ：显示生成的 Triton kernel：
 
 .. code-block:: bash
 
@@ -206,7 +206,7 @@ getArtifactLogger 与标准 Python logging 的区别
 
 标准 Python logging 通过 ``logging.getLogger(name)`` 获取 Logger，其中 ``name`` 通常是模块的 ``__name__`` 。Logger 的层级关系由名称中的点号分隔决定——例如 ``torch._inductor.scheduler`` 是 ``torch._inductor`` 的子 Logger。
 
-``getArtifactLogger`` 在这之上添加了一个**artifact 维度 ** ：
+``getArtifactLogger`` 在这之上添加了一个 **artifact 维度** ：
 
 .. code-block:: python
 
@@ -223,7 +223,7 @@ getArtifactLogger 与标准 Python logging 的区别
 区别在于：
 
 - 标准 Logger 的级别由 Logger 名称的层级决定，父子 Logger 之间通过 propagate 传递日志
-- ``getArtifactLogger`` 创建的 Logger 额外绑定了一个**artifact 名称 ** ，这个名称独立于模块层级
+- ``getArtifactLogger`` 创建的 Logger 额外绑定了一个 **artifact 名称** ，这个名称独立于模块层级
 - 同一个模块可以有多个 artifact Logger，各自有独立的开关控制
 
 日志级别的层级传播
@@ -255,7 +255,7 @@ getArtifactLogger 与标准 Python logging 的区别
 配置日志系统的实用技巧
 -------------------------------
 
-除了通过 ``TORCH_LOGS`` 环境变量，还可以在代码中**程序化地配置日志系统** ：
+除了通过 ``TORCH_LOGS`` 环境变量，还可以在代码中 **程序化地配置日志系统** ：
 
 .. code-block:: python
 

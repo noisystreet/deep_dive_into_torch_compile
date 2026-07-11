@@ -11,7 +11,7 @@
 
 在 NLP 中，不同句子的长度不同。批处理时有两种策略：
 
-**策略 A：Padding 到固定长度 **
+**策略 A：Padding 到固定长度**
 
 .. code-block:: python
 
@@ -26,7 +26,7 @@
            padded.append(seq)
        return torch.stack(padded), torch.tensor([l for _, l in batch])
 
-** 策略 B：Batch 内 Padding（不跨 batch 固定）**
+**策略 B：Batch 内 Padding（不跨 batch 固定）**
 
 .. code-block:: python
 

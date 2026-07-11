@@ -77,7 +77,7 @@ AOTAutograd 调试与排查
 日志内容的解读
 
 - **联合图部分** 同时包含前向节点（ ``aten.mul`` 、 ``aten.sum`` ）和反向节点（ ``aten.expand`` 、 ``aten.mul`` 、 ``aten.sum`` 中的梯度部分）。占位符 ``primals_*`` 是前向输入和中间结果， ``tangents_*`` 是反向输入的梯度。
-- **前向子图部分 ** 是分区后的前向部分，其输出除了最终结果外，还包含反向需要的 saved tensors（此处为 ``%mul`` ）。
+- **前向子图部分** 是分区后的前向部分，其输出除了最终结果外，还包含反向需要的 saved tensors（此处为 ``%mul`` ）。
 - **反向子图部分** 通过占位符接收前向保存的 tensor 和反向输入，计算出梯度。
 
 AOTAutograd 日志输出的整体流程：
@@ -425,7 +425,7 @@ Joint graph 过于庞大
 
 当模型非常深，或者用了大量高层算子（如 ``torch.linalg.*`` 、 ``torch.fft.*`` ）时，joint graph 的节点数可能达到数千甚至上万。这不仅拖慢编译速度，还可能耗尽内存。
 
-**处理方法： **
+**处理方法：**
 
 .. code-block:: python
 
@@ -481,15 +481,15 @@ in-place 操作在 eager 模式下可以正常工作，但在 AOTAutograd 的 jo
 
 排查 in-place 问题的建议：
 
-1.** 先用 ``backend="aot_eager"`` 测试 **：如果 ``aot_eager`` 后端成功但 Inductor 后端失败，问题可能不在 AOTAutograd 而是在 Inductor 对 functionalization 结果的处理上。
-2.** 观察 functionalization 日志 **：使用 ``TORCH_LOGS="aot_functionalization"`` 查看 functionalization 的每一步转换。
-3.** 分步排查 **：在函数开始处添加 ``.clone()`` 确保输入不被其他操作共享，排除别名问题。
+1.**先用 ``backend="aot_eager"`` 测试**：如果 ``aot_eager`` 后端成功但 Inductor 后端失败，问题可能不在 AOTAutograd 而是在 Inductor 对 functionalization 结果的处理上。
+2.**观察 functionalization 日志**：使用 ``TORCH_LOGS="aot_functionalization"`` 查看 functionalization 的每一步转换。
+3.**分步排查**：在函数开始处添加 ``.clone()`` 确保输入不被其他操作共享，排除别名问题。
 
 Eager 与编译后的梯度不匹配
 
 这是最隐蔽的问题：模型在 eager 模式下 loss 正常下降，但编译后梯度出现 NaN 或不收敛。
 
-** 排查步骤：**
+**排查步骤：**
 
 .. code-block:: python
 

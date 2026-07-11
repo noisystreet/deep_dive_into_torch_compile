@@ -4,7 +4,7 @@
 Dynamic Shapes 调试
 =========================
 
-第 3.8 节介绍了符号形状（symbolic shapes）的原理——``ShapeEnv`` 、 ``SymNode`` 以及 ``dynamic=True`` 的工作方式。这一节聚焦 **如何诊断和优化 **Dynamic Shapes 场景中的 guard 失败与频繁重编译问题。
+第 3.8 节介绍了符号形状（symbolic shapes）的原理——``ShapeEnv`` 、 ``SymNode`` 以及 ``dynamic=True`` 的工作方式。这一节聚焦 **如何诊断和优化**Dynamic Shapes 场景中的 guard 失败与频繁重编译问题。
 
 判断是否触发了重新编译
 ===============================
@@ -39,7 +39,7 @@ Dynamic Shapes 调试
 常见的 Dynamic Shapes 问题
 ================================
 
-** 形状变化被过度 guard** 。以下代码会导致每次不同长度的输入都重新编译：
+**形状变化被过度 guard** 。以下代码会导致每次不同长度的输入都重新编译：
 
 .. code-block:: python
 
@@ -51,9 +51,9 @@ Dynamic Shapes 调试
    fn(torch.randn(200))  # guard 失败，重新编译
    fn(torch.randn(300))  # guard 失败，重新编译
 
-**数据集形状不一致 ** 。最常见的原因——训练/验证集的 batch size 或序列长度不一致。
+**数据集形状不一致** 。最常见的原因——训练/验证集的 batch size 或序列长度不一致。
 
-**数据预处理引入了动态形状 ** 。如 ``torch.unique`` 、 ``torch.nonzero`` 等操作的输出形状取决于输入数据。
+**数据预处理引入了动态形状** 。如 ``torch.unique`` 、 ``torch.nonzero`` 等操作的输出形状取决于输入数据。
 
 使用 ShapeEnv 日志
 ==========================
@@ -237,7 +237,7 @@ Dynamic Shapes vs Static Shapes 的权衡
      - 大（可做形状相关的常量折叠）
      - 中（需保留符号表达式）
 
-核心权衡： **动态形状减少了重编译次数，但生成的 kernel 不如静态形状高效 ** 。如果重编译的性能损失大于 kernel 性能下降的损失，就应该使用动态形状。
+核心权衡： **动态形状减少了重编译次数，但生成的 kernel 不如静态形状高效** 。如果重编译的性能损失大于 kernel 性能下降的损失，就应该使用动态形状。
 
 使用 cache_size_limit 控制编译缓存
 --------------------------------------------
@@ -286,8 +286,8 @@ Inductor 如何应对符号形状
 
 符号形状对 Inductor 的影响：
 
-- **Tiling 参数不可静态确定 ** ：Scheduler 基于符号表达式计算 block 大小，可能低于最优值
-- **循环边界使用符号变量 ** ：生成的 Triton kernel 需要在运行时计算循环次数
+- **Tiling 参数不可静态确定** ：Scheduler 基于符号表达式计算 block 大小，可能低于最优值
+- **循环边界使用符号变量** ：生成的 Triton kernel 需要在运行时计算循环次数
 - **部分优化失效** ：常量折叠、形状相关的 dead code elimination 在符号形状上受限
 
 .. code-block:: python
