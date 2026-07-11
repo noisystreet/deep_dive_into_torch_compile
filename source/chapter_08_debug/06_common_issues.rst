@@ -111,7 +111,7 @@
 
    TORCH_LOGS="+inductor" python train.py
 
-看日志中生成的 kernel 数量。如果超过 100 个 kernel，而模型本身不大，说明 fusion 不充分。尝试：
+看日志中生成的 kernel 数量。如果超过 100 个 kernel，而模型本身不大，说明融合不充分。尝试：
 
 .. code-block:: python
 
@@ -225,7 +225,7 @@ Eager vs Compiled 显存使用模式对比
        subgraph CompiledMem["Compiled 模式显存使用"]
            C1["编译图保持所有中间结果"]
            C2["Kernel 执行时分配和释放<br/>但生命周期管理更复杂"]
-           C3["显存峰值可能更高<br/>因为 fusion 保留了更多中间 tensor"]
+           C3["显存峰值可能更高<br/>因为融合保留了更多中间 tensor"]
            C4["CUDA Graph 额外占用<br/>重放缓冲区"]
            C1 --> C2 --> C3 --> C4
        end
@@ -740,7 +740,7 @@ MaxAutotune 失败
 Pattern Matcher 失败
 -------------------------
 
-Inductor 使用 Pattern Matcher 将多个 ATen 操作匹配为特定的融合模式。当匹配失败时，fusion 效果会下降。
+Inductor 使用 Pattern Matcher 将多个 ATen 操作匹配为特定的融合模式。当匹配失败时，融合效果会下降。
 
 .. code-block:: bash
 

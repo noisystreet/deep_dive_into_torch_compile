@@ -68,7 +68,7 @@
        E --> F{"有 kernel launch 间隙?"}
        F -->|"是"| G["Step 4: 分析融合效率<br/>检查 kernel 数量"]
        F -->|"否"| H["Step 5: 检查动态形状<br/>guard 命中率"]
-       G --> I{"fusion 不充分?"}
+       G --> I{"融合不充分?"}
        I -->|"是"| J["调整 Scheduler 配置<br/>增大 max_fusion_size"]
        I -->|"否"| K["使用 reduce-overhead 模式<br/>或 CUDA Graph"]
        H --> L["标记动态维度"]
@@ -271,9 +271,9 @@ Step 4 — 分析融合效率
    [inductor] 生成的 Kernel 数量: 48
    [inductor] 融合效率: 186 / 48 = 3.88 节点/kernel
 
-如果 ``节点/kernel`` 的比值小于 3，说明 fusion 不充分。每个 kernel 平均只融合了不到 3 个操作。
+如果 ``节点/kernel`` 的比值小于 3，说明融合不充分。每个 kernel 平均只融合了不到 3 个操作。
 
-检查是否存在 fusion 被阻止的情况：
+检查是否存在融合被阻止的情况：
 
 .. code-block:: python
 
@@ -282,7 +282,7 @@ Step 4 — 分析融合效率
    # 启用详细的 scheduling 日志
    inductor_config.debug = True
 
-   # 增大 fusion 大小限制
+   # 增大融合大小限制
    inductor_config.max_fusion_size = 12  # 默认 8
 
    # 更激进地融合 pointwise 操作

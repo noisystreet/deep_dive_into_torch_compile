@@ -153,11 +153,11 @@
 
 **小张量场景** （32×32）：瓶颈是 kernel launch 延迟和 Python 解释器开销。
 
-在 eager 模式下， ``sin`` 、 ``cos`` 、 ``tanh`` 、 ``add`` 、 ``mul`` 每个操作都独立 launch kernel。300 个操作 × 每次 launch ~10μs = 约 3ms 开销，再加上每个操作的 Python 函数调用开销。torch.compile 把所有操作 fusion 成一个 kernel，一次 launch 跑完，直接把 launch 开销降到接近零。
+在 eager 模式下， ``sin`` 、 ``cos`` 、 ``tanh`` 、 ``add`` 、 ``mul`` 每个操作都独立 launch kernel。300 个操作 × 每次 launch ~10μs = 约 3ms 开销，再加上每个操作的 Python 函数调用开销。torch.compile 把所有操作融合成一个 kernel，一次 launch 跑完，直接把 launch 开销降到接近零。
 
 **大张量场景** （8192×8192）：瓶颈是计算本身（访存带宽和算力）。
 
-即使 fusion 了，compute-bound 的 kernel 也只能受限于 GPU 的峰值性能。torch.compile 仍然能通过更好的 tiling、自动调优等方式获得 2-3 倍加速，但远不如小张量时"百倍"的效果。
+即使融合了，compute-bound 的 kernel 也只能受限于 GPU 的峰值性能。torch.compile 仍然能通过更好的 tiling、自动调优等方式获得 2-3 倍加速，但远不如小张量时"百倍"的效果。
 
 编译开销 vs 执行加速：盈亏平衡点
 =============================================
@@ -184,7 +184,7 @@
 - **单次推理**：只跑一次的函数，编译时间 > 节省的执行时间
 - **极度动态的形状**：每次输入形状都不同，不断触发重新编译
 - **大量 graph break**：图被切成很多小段，每段单独编译 + launch，融合效果大打折扣
-- **CPU-only 小模型** ：CPU 上的 kernel fusion 收益有限，编译开销可能净赔
+- **CPU-only 小模型** ：CPU 上的 kernel 融合收益有限，编译开销可能净赔
 
 我们会在第 8 章的调试工具和第 9 章的进阶优化中讨论如何诊断这些问题。
 

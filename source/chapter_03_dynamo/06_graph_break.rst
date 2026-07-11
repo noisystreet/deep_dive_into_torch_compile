@@ -154,8 +154,8 @@ Graph Break 的性能影响
 
 graph break 是有代价的。每个 graph break 意味着：
 
-1.**子图之间无法融合** ：Subgraph 1 的输出必须写到显存，Subgraph 2 再从显存读入，错失 fusion 机会
-2.**额外的 kernel launch** ：原来可以 fusion 成一个 kernel 的操作被拆成多个
+1.**子图之间无法融合** ：Subgraph 1 的输出必须写到显存，Subgraph 2 再从显存读入，错失融合机会
+2.**额外的 kernel launch** ：原来可以融合成一个 kernel 的操作被拆成多个
 3.**额外的 Python 执行** ：graph break 之间的代码在 eager 模式下执行，无法享受编译加速
 
 但 graph break 的代价不是均匀的。如果 graph break 发生在模型的前向函数 **最外层** （比如 ``torch.compile`` 嵌套了一个 ``print`` ），代价相对较小。如果 graph break 发生在 **循环内部** （比如 ``for i in range(100): print("step", i); x = torch.sin(x)`` ），会导致每轮循环都产生两个子图 + 一次 Python 解释器调用——性能损失很大。

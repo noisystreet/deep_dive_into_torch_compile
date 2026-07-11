@@ -193,7 +193,7 @@ Kernel Launch 模式对比
            F2 --> F3["融合 Kernel 3<br/>(mm+relu)"]
        end
 
-       Unfused -->|"fusion 优化"| Fused
+       Unfused -->|"融合优化"| Fused
 
 未融合模式下，每个小 kernel 之间有明显的 GPU 空闲间隙（灰色方块），因为 CPU 需要为每个 kernel launch 进行准备工作。融合模式下，多个操作合并为少数 kernel，kernel 之间紧密排列，GPU 利用率显著提高。
 
@@ -303,7 +303,7 @@ torch.profiler + torch.compile 高级分析
 
 使用 TensorBoard 插件（ ``tensorboard_trace_handler`` ）可以直接在 TensorBoard 中查看 trace，比 Chrome Tracing 更方便。
 
-分析 Kernel Fusion 机会
+分析 Kernel 融合机会
 ----------------------------
 
 从 profiler 输出中可以识别出哪些操作没有被融合，从而手动引导 Scheduler 进行融合：
@@ -322,7 +322,7 @@ torch.profiler + torch.compile 高级分析
 
 通过观察 kernel 名称中的 fused 信息，可以判断哪些操作被合并了。例如 ``triton_poi_fused_add_cos_sin_0`` 表示 add、cos、sin 三个操作被融合为一个 pointwise kernel。
 
-如果发现大量独立的 pointwise kernel（名称中只有单个操作），说明 fusion 失效，需要检查 graph break 或调整 ``max_fusion_size`` 。
+如果发现大量独立的 pointwise kernel（名称中只有单个操作），说明融合失效，需要检查 graph break 或调整 ``max_fusion_size`` 。
 
 使用 profiler.export_chrome_trace 的最佳实践
 ---------------------------------------------------

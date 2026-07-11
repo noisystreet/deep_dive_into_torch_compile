@@ -93,7 +93,7 @@
 
 这是最高层的表示。每个节点直接对应一个 PyTorch API 调用。关于 FX Graph 的节点结构我们在 2.3 节已经详细讲过，这里不再重复。
 
-关键观察：这张图里有 **3 个计算节点** （sin、cos、add），理论上可以 fusion 成一个 kernel。但在 FX Graph 层面，我们只看到了"做什么"，没有看到"怎么做"。
+关键观察：这张图里有 **3 个计算节点** （sin、cos、add），理论上可以融合成一个 kernel。但在 FX Graph 层面，我们只看到了"做什么"，没有看到"怎么做"。
 
 阶段 2：AOTAutograd 生成 Joint Graph
 -----------------------------------------------
@@ -213,7 +213,7 @@ Scheduler 遍历 IRNode 之间的数据依赖，将具有相同 ``ranges`` 和 `
        [kernel 2] Pointwise: cos(y)
        [kernel 3] Pointwise: add(sin, cos)
 
-   融合后 (1 个 fusion kernel):
+   融合后 (1 个融合 kernel):
        [kernel 1] FusedSchedulerNode:
            sin(x) → load x, compute sin
            cos(y) → load y, compute cos
@@ -291,7 +291,7 @@ Scheduler 遍历 IRNode 之间的数据依赖，将具有相同 ``ranges`` 和 `
            n_elements=4, BLOCK_SIZE=4
        )
 
-从最初的 3 个 PyTorch API 调用（sin、cos、add）→ 3 个 IRNode → 1 个 fusion kernel → 1 次 GPU kernel launch。这就是 torch.compile 做的事情。
+从最初的 3 个 PyTorch API 调用（sin、cos、add）→ 3 个 IRNode → 1 个融合 kernel → 1 次 GPU kernel launch。这就是 torch.compile 做的事情。
 
 组件间接口契约
 ======================

@@ -70,7 +70,7 @@ Max-autotune 模式
    - Triton autotune: 枚举 BLOCK_SIZE、num_warps、num_stages
    - 矩阵乘法 padding: 对齐到 Tensor Core 的尺寸
    - 布局优化: 为卷积选择 channels-last 等布局
-   - 更激进的 fusion: 包括横跨多个操作的融合
+   - 更激进的融合: 包括横跨多个操作的融合
    - CUDA Graph: 自动捕获
 
 .. code-block:: python

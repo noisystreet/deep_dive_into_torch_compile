@@ -67,3 +67,31 @@
    AOTInductor
       Inductor 的离线（Ahead-of-Time）变体，在部署前编译所有 kernel，
       输出 C++ 可加载的共享库（ ``.so`` ），消除运行时编译延迟。
+
+   Lowering（降级）
+      将高层中间表示（FX Graph）转换为低层中间表示（Inductor IRNode）的过程。
+      在 Inductor 中，每个 ATen 算子都有对应的 lowering 函数，将 FX 节点
+      映射为 Pointwise、Reduction、TemplateBuffer 等 IR 类型。
+
+   Pointwise（逐元素操作）
+      对张量中每个元素独立应用相同计算的操作类型（如 ``sin``、``add``、
+      ``mul``），是 Inductor 中最常见、最易融合的 IR 类型。
+
+   Reduction（归约操作）
+      将张量沿某个维度聚合为更少元素的操作类型（如 ``sum``、``mean``、
+      ``max``），在 Inductor 中以 ``Reduction`` IRNode 表示。
+
+   Decomposition（算子分解）
+      将高层算子（如 ``layer_norm``、``softmax``）展开为基本算子
+      （``mean``、``rsqrt``、``mul`` 等）的过程，由 AOTAutograd 在
+      joint graph 构建时执行，降低后端的 lowering 负担。
+
+   Dynamic Shapes（动态形状）
+      编译时形状未知、运行时可能变化的张量维度。Inductor 使用符号形状
+      （Symbolic Shapes）机制和 ``sympy`` 表达式处理动态形状，生成
+      通用的 Triton kernel 而非为每个形状编译专用版本。
+
+   Fusion（融合）
+      将多个连续的操作合并为一个 kernel 执行，减少 kernel launch 开销和
+      中间结果的显存读写。Inductor 的 Scheduler 负责在 IRNode 层面
+      执行融合决策。

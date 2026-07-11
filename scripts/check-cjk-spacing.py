@@ -18,7 +18,7 @@ import os, re, sys, argparse
 # CJK 字符范围
 CJK = set("\u4e00-\u9fff\u3000-\u303f\uff00-\uffef")
 # CJK 标点（这些跟在 markup 后面不需要空格也正常渲染）
-CJK_PUNCT = set("）？。，：；！、】」』")
+CJK_PUNCT = set("（）？。，：；！、】「」』")
 
 
 def check_file(path, fix=False):

@@ -58,7 +58,7 @@ torch.compile 是一个快速发展的项目。这一节梳理当前已知的局
 
 **Inductor IR 的进一步发展** 。当前的 IRNode 设计（Pointwise、Reduction 等）对于许多操作是足够的，但对于稀疏操作、动态控制流、复数类型等场景还需要扩展。
 
-**Fusion Regions** 。第 5.7 节提到的 Fusion Regions 还在持续演进中，未来可能在 FX Graph 级别做更精细的融合规划。更多细节见 ``fx_passes/fusion_regions.py`` 。
+**融合区域（Fusion Regions）** 。第 5.7 节提到的 融合区域（Fusion Regions） 还在持续演进中，未来可能在 FX Graph 级别做更精细的融合规划。更多细节见 ``fx_passes/fusion_regions.py`` 。
 
 **更智能的布局优化** 。当前的 ``FlexibleLayout`` 允许 codegen 选择输出布局，但选择的策略是启发式规则。未来可能引入基于 cost model 的布局选择。
 
