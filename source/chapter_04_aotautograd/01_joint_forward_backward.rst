@@ -23,19 +23,12 @@ eager 模式下，autograd 的 tape 在前向执行时** 逐 op 追加 **， ``b
 
 AOTAutograd 的设计目标：** 把 autograd 从运行时搬到编译时 **，在一张** 联合图（joint graph） **上做全局分析，再拆成可独立编译的前向/反向子图。
 
-.. mermaid::
+.. figure:: /_static/figures/eager_vs_aotautograd.svg
+   :align: center
+   :alt: Eager Autograd vs AOTAutograd
+   :figwidth: 90%
 
-   flowchart LR
-       subgraph eager["Eager Autograd"]
-           A1["前向执行"] --> A2["实时写 tape"]
-           A2 --> A3["backward 逐段解释执行"]
-           A3 -.-> A4["（编译器看不到完整前向+反向）"]
-       end
-       subgraph aot["AOTAutograd"]
-           B1["编译期 trace 联合图"] --> B2["图分区"]
-           B2 --> B3["分别交给 Inductor"]
-           B3 -.-> B4["（编译器看到全局，可做跨前向/反向优化）"]
-       end
+   左边 Eager Autograd 的拆解执行与右边 AOTAutograd 的联合图编译形成鲜明对比。
 
 **为什么必须是「中间层」**。AOTAutograd 故意 **不** 生成 Triton 代码、**不** 捕获 Python 字节码。它只消费 FX Graph，输出仍是 FX Graph——这体现了第 2.1 节的 **阶段专精** 与 **策略/机制分离**：
 

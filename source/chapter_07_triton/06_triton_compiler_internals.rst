@@ -16,17 +16,12 @@ TTIR 的分层设计
 
 TTIR 采用分层设计，从高层的 Triton 特定操作到底层的 LLVM 操作：
 
-.. mermaid::
+.. figure:: /_static/figures/ttir_hierarchy.svg
+   :align: center
+   :alt: TTIR 分层架构
+   :figwidth: 80%
 
-   flowchart TD
-       A["TTIR (Triton Dialect)<br/>ttir.add, ttir.load, ttir.dot<br/>ttir.store, ttir.reduce"] --> B["TTGIR (TritonGPU Dialect)<br/>添加 GPU 特定信息<br/>warp 映射·shared memory"]
-       B --> C["LLVM Dialect<br/>llvm.add, llvm.load<br/>llvm.store"]
-       C --> D["PTX<br/>NVIDIA 指令集"]
-
-       style A fill:#4a9eff,color:#fff
-       style B fill:#ffa94d,color:#fff
-       style C fill:#6abf69,color:#fff
-       style D fill:#d94f8a,color:#fff
+   从设备无关的 TTIR 到底层 PTX 的四层 MLIR 架构。
 
 三个主要层次：
 
