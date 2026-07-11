@@ -2,6 +2,11 @@
 # ===================================================
 
 from datetime import datetime
+import sys
+from pathlib import Path
+
+# 将 _ext 目录加入 Python 路径，使自定义扩展可导入
+sys.path.insert(0, str(Path(__file__).parent / "_ext"))
 
 # -- Project information -----------------------------------------------------
 
@@ -22,6 +27,7 @@ extensions = [
     "sphinx.ext.extlinks",
     "sphinx.ext.intersphinx",
     "sphinxcontrib.mermaid",
+    "synced_code",
 ]
 
 # -- Mermaid configuration ---------------------------------------------------
