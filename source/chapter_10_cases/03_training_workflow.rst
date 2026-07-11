@@ -369,79 +369,79 @@ Gradient Scaling 与编译图的交互
    .. code-block:: python
       :linenos:
 
-   class CompiledTrainer:
-       """封装了 compiled 训练循环的 Trainer。"""
+      class CompiledTrainer:
+          """封装了 compiled 训练循环的 Trainer。"""
 
-       def __init__(
-           self,
-           model: nn.Module,
-           compile_mode: str = "default",
-           use_amp: bool = False,
-           lr: float = 1e-3,
-           weight_decay: float = 1e-4,
-       ):
-           self.use_amp = use_amp
-           self.compile_mode = compile_mode
+          def __init__(
+              self,
+              model: nn.Module,
+              compile_mode: str = "default",
+              use_amp: bool = False,
+              lr: float = 1e-3,
+              weight_decay: float = 1e-4,
+          ):
+              self.use_amp = use_amp
+              self.compile_mode = compile_mode
 
-           # 编译模型
-           if compile_mode == "eager":
-               self.model = model.cuda()
-           else:
-               self.model = torch.compile(model, mode=compile_mode).cuda()
+              # 编译模型
+              if compile_mode == "eager":
+                  self.model = model.cuda()
+              else:
+                  self.model = torch.compile(model, mode=compile_mode).cuda()
 
-           self.optimizer = optim.AdamW(
-               self.model.parameters(), lr=lr, weight_decay=weight_decay
-           )
-           self.criterion = nn.CrossEntropyLoss()
-           self.scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
-           self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10)
+              self.optimizer = optim.AdamW(
+                  self.model.parameters(), lr=lr, weight_decay=weight_decay
+              )
+              self.criterion = nn.CrossEntropyLoss()
+              self.scaler = torch.amp.GradScaler("cuda", enabled=use_amp)
+              self.scheduler = optim.lr_scheduler.CosineAnnealingLR(self.optimizer, T_max=10)
 
-       def train_epoch(self, dataloader: DataLoader) -> float:
-           """训练一个 epoch，返回平均 loss。"""
-           self.model.train()
-           total_loss = 0.0
-           num_batches = 0
+          def train_epoch(self, dataloader: DataLoader) -> float:
+              """训练一个 epoch，返回平均 loss。"""
+              self.model.train()
+              total_loss = 0.0
+              num_batches = 0
 
-           for x, y in dataloader:
-               x, y = x.cuda(), y.cuda()
+              for x, y in dataloader:
+                  x, y = x.cuda(), y.cuda()
 
-               # 前向传播 — 使用 AMP 上下文
-               with torch.amp.autocast("cuda", enabled=self.use_amp):
-                   output = self.model(x)
-                   loss = self.criterion(output, y)
+                  # 前向传播 — 使用 AMP 上下文
+                  with torch.amp.autocast("cuda", enabled=self.use_amp):
+                      output = self.model(x)
+                      loss = self.criterion(output, y)
 
-               # 反向传播 — 通过 scaler
-               self.scaler.scale(loss).backward()
-               self.scaler.step(self.optimizer)
-               self.scaler.update()
-               self.optimizer.zero_grad()
+                  # 反向传播 — 通过 scaler
+                  self.scaler.scale(loss).backward()
+                  self.scaler.step(self.optimizer)
+                  self.scaler.update()
+                  self.optimizer.zero_grad()
 
-               total_loss += loss.item()
-               num_batches += 1
+                  total_loss += loss.item()
+                  num_batches += 1
 
-           self.scheduler.step()
-           return total_loss / num_batches
+              self.scheduler.step()
+              return total_loss / num_batches
 
-       @torch.no_grad()
-       def evaluate(self, dataloader: DataLoader) -> tuple:
-           """评估模型，返回 (平均 loss, 准确率)。"""
-           self.model.eval()
-           total_loss = 0.0
-           correct = 0
-           total = 0
+          @torch.no_grad()
+          def evaluate(self, dataloader: DataLoader) -> tuple:
+              """评估模型，返回 (平均 loss, 准确率)。"""
+              self.model.eval()
+              total_loss = 0.0
+              correct = 0
+              total = 0
 
-           for x, y in dataloader:
-               x, y = x.cuda(), y.cuda()
-               with torch.amp.autocast("cuda", enabled=self.use_amp):
-                   output = self.model(x)
-                   loss = nn.CrossEntropyLoss()(output, y)
+              for x, y in dataloader:
+                  x, y = x.cuda(), y.cuda()
+                  with torch.amp.autocast("cuda", enabled=self.use_amp):
+                      output = self.model(x)
+                      loss = nn.CrossEntropyLoss()(output, y)
 
-               total_loss += loss.item()
-               _, predicted = output.max(1)
-               total += y.size(0)
-               correct += predicted.eq(y).sum().item()
+                  total_loss += loss.item()
+                  _, predicted = output.max(1)
+                  total += y.size(0)
+                  correct += predicted.eq(y).sum().item()
 
-           return total_loss / len(dataloader), correct / total
+              return total_loss / len(dataloader), correct / total
 
 .. synced-code-end::
 

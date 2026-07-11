@@ -16,18 +16,18 @@ FX Graph 基础
    .. code-block:: python
       :linenos:
 
-   import torch
+      import torch
 
 
-   class MyModel(torch.nn.Module):
-       def forward(self, x):
-           return torch.sin(x) + torch.cos(x)
+      class MyModel(torch.nn.Module):
+          def forward(self, x):
+              return torch.sin(x) + torch.cos(x)
 
 
-   model = MyModel()
-   fx_model = torch.fx.symbolic_trace(model)
-   print(fx_model.graph)
-   fx_model.graph.print_tabular()
+      model = MyModel()
+      fx_model = torch.fx.symbolic_trace(model)
+      print(fx_model.graph)
+      fx_model.graph.print_tabular()
 
 .. synced-code-end::
 

@@ -16,21 +16,21 @@ Hello World
    .. code-block:: python
       :linenos:
 
-   import torch
+      import torch
 
 
-   def foo(x, y):
-       a = torch.sin(x)
-       b = torch.cos(y)
-       return a + b
+      def foo(x, y):
+          a = torch.sin(x)
+          b = torch.cos(y)
+          return a + b
 
 
-   compiled_foo = torch.compile(foo, backend="eager", fullgraph=True)
+      compiled_foo = torch.compile(foo, backend="eager", fullgraph=True)
 
-   x = torch.randn(3, 3)
-   y = torch.randn(3, 3)
-   result = compiled_foo(x, y)
-   print(result)
+      x = torch.randn(3, 3)
+      y = torch.randn(3, 3)
+      result = compiled_foo(x, y)
+      print(result)
 
 .. synced-code-end::
 

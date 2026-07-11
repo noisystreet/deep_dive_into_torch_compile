@@ -112,18 +112,18 @@ PyTorch 内置了多个后端：
    .. code-block:: python
       :linenos:
 
-   import torch
+      import torch
 
 
-   def fn(x, y):
-       return torch.sin(x) + torch.cos(y)
+      def fn(x, y):
+          return torch.sin(x) + torch.cos(y)
 
 
-   compiled_fn = torch.compile(fn, backend="inductor")
-   x = torch.randn(4).cuda()
-   y = torch.randn(4).cuda()
-   result = compiled_fn(x, y)
-   print(result)
+      compiled_fn = torch.compile(fn, backend="inductor")
+      x = torch.randn(4).cuda()
+      y = torch.randn(4).cuda()
+      result = compiled_fn(x, y)
+      print(result)
 
 .. synced-code-end::
 

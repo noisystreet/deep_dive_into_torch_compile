@@ -121,9 +121,10 @@ def sync_to_rst(
 
     # 生成缩进的代码块
     indent_str = " " * indent
+    code_indent_str = " " * (indent + 3)  # 代码比 code-block 多缩进 3 格
     code_lines = code.split("\n")
     indented_code = "\n".join(
-        f"{indent_str}{line}" if line.strip() else "" for line in code_lines
+        f"{code_indent_str}{line}" if line.strip() else "" for line in code_lines
     )
 
     # 构建新内容
