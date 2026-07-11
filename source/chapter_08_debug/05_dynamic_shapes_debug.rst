@@ -164,48 +164,12 @@ Dynamic Shapes 调试工作流
 
 遇到动态形状导致的性能问题时，可以按照以下决策树逐步排查：
 
-.. mermaid::
+.. figure:: /_static/figures/dynamic_shapes_guard.svg
+   :align: center
+   :alt: 静态形状 vs 动态形状 Guard 行为
+   :figwidth: 90%
 
-   graph TD
-       A["遇到性能问题"] --> B{"检查 guard 命中率<br/>TORCH_LOGS=+guards"}
-       B -->|"频繁出现 Guard failed"| C{"是否频繁重编译？<br/>检查 compile 计数器"}
-       B -->|"Guard 全部命中"| D["排查其他原因<br/>（见 8.4 节 Profiling）"]
-       C -->|"是"| E{"确定动态维度"}
-       C -->|"否"| F["检查 graph break<br/>（见 8.1 节）"]
-       E --> G{"维度范围是否可控？"}
-       G -->|"是"| H["使用 dynamic=True<br/>或 mark_dynamic"]
-       G -->|"否"| I["使用 padding 统一形状"]
-       H --> J["验证编译次数减少"]
-       I --> J
-       J --> K{"性能是否达标？"}
-       K -->|"是"| L["完成"]
-       K -->|"否"| M["调整 cache_size_limit<br/>或优化策略"]
-
-静态形状 vs 动态形状的 Guard 行为对比
-==============================================
-
-下面的 Mermaid 图展示了静态形状和动态形状下 guard 行为的本质区别：
-
-.. mermaid::
-
-   graph LR
-       subgraph Static["静态形状 (默认)"]
-           S1["输入 shape=(32, 784)"] --> S2["生成 Guard:<br/>x.shape[0] == 32<br/>x.shape[1] == 784"]
-           S2 --> S3{"下次输入<br/>shape=(64, 784)?"}
-           S3 -->|"Guard 失败"| S4["重新编译"]
-           S3 -->|"shape=(32, 784)"| S5["命中缓存"]
-       end
-
-       subgraph Dynamic["动态形状 (dynamic=True)"]
-           D1["输入 shape=(32, 784)"] --> D2["生成 Guard:<br/>x.shape[0] >= 1<br/>x.shape[1] == 784"]
-           D2 --> D3{"下次输入<br/>shape=(64, 784)?"}
-           D3 -->|"Guard 通过"| D4["命中缓存<br/>无需重新编译"]
-           D3 -->|"shape=(32, 784)"| D4
-       end
-
-       Static -->|"形状变化触发<br/>大量重编译"| Dynamic
-
-静态形状模式下，Dynamo 将每个维度的具体数值写入 guard，任何数值变化都触发重编译。动态形状模式下，guard 只检查维度的符号约束（如 ``s0 >= 1`` ），形状范围内的变化不会触发重编译。
+   静态形状和动态形状下 guard 行为的本质区别：精确值检查 vs 范围检查。
 
 动态形状编译优化策略
 ============================

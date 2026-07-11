@@ -138,32 +138,12 @@ AOTDispatchAutograd 中的 epilogue 处理
 
 把所有概念串起来，AOTAutograd 处理一个训练函数的完整流程如下：
 
-.. mermaid::
+.. figure:: /_static/figures/aot_full_flow.svg
+   :align: center
+   :alt: AOTAutograd 完整处理流程
+   :figwidth: 100%
 
-   sequenceDiagram
-       participant User as 用户训练函数
-       participant Func as 功能化
-       participant Prep as 准备 autograd
-       participant Joint as 创建联合图
-       participant FX as make_fx 追踪
-       participant Partition as 图分区
-       participant Inductor as Inductor 编译
-       participant Runtime as 运行时包装
-
-       User->>Func: 原始函数 fn
-       Note over Func: 将 in-place 操作<br/>转换为纯函数式
-       Func->>Prep: fn_func（功能化后的函数）
-       Note over Prep: 准备前向输出的<br/>tangent_mask
-       Prep->>Joint: fn_prepped
-       Note over Joint: 用 autograd.grad<br/>追踪前向和反向
-       Joint->>FX: joint_fn
-       Note over FX: 用 proxy tensor<br/>生成 joint FX Graph
-       FX->>Partition: fx_g（joint graph）
-       Note over Partition: min-cut 分区<br/>分割成前向/反向子图
-       Partition->>Inductor: fwd_module + bwd_module
-       Note over Inductor: 分别编译前向和反向
-       Inductor->>Runtime: compiled_fwd + compiled_bwd
-       Note over Runtime: AOTDispatchAutograd<br/>管理执行流和 saved tensors
+   从原始训练函数经过功能化、autograd 准备、联合图创建、make_fx 追踪、图分区、Inductor 编译到运行时包装的完整流水线。
 
 AOTAutograd 与其他编译栈组件的交互边界
 ============================================

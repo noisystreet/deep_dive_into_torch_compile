@@ -57,37 +57,19 @@ Minimizer 通过环境变量启用：
 
 两种模式的区别在于定位的环节不同。以下决策树可以帮助你选择合适的模式：
 
-.. mermaid::
+.. figure:: /_static/figures/minimizer_decision.svg
+   :align: center
+   :alt: Minimizer 模式选择与二分搜索
+   :figwidth: 90%
 
-   graph TD
-       START{"编译失败"} -->|"是"| MODE{"选择合适的 Minimizer 模式"}
-       MODE --> DYNAMO["TORCHDYNAMO_REPRO_AFTER=dynamo"]
-       MODE --> AOT["TORCHDYNAMO_REPRO_AFTER=aot"]
-       DYNAMO --> DQ{"Dynamo 图捕获阶段报错?"}
-       DQ -->|"是"| DRESULT["定位到错误的 Python 代码<br/>如: 不支持的 Python 语法"]
-       DQ -->|"否"| TRY_AOT["尝试 aot 模式"]
-       AOT --> AQ{"Inductor / 后端编译阶段报错?"}
-       AQ -->|"是"| ARESULT["定位到导致编译失败的 FX 子图<br/>如: 算子 lowering 失败"]
-       AQ -->|"否"| BACKEND["可能是后端运行时错误<br/>检查 CUDA / Triton 错误"]
-       TRY_AOT --> AOT
+   上半部分为 dynamo/aot 模式选择决策树，下半部分为 bisect 算法的迭代过程。
 
 Minimizer 的工作原理
 ===========================
 
 Minimizer 的核心是一个 **二分搜索（bisect）** 算法：
 
-.. mermaid::
-
-   graph TD
-       INPUT["输入: 完整 FX Graph<br/>N 个节点"] --> SPLIT["将图一分为二"]
-       SPLIT --> TEST["前半 eager + 后半 compiled<br/>测试是否复现错误"]
-       TEST --> DECIDE{"错误是否复现?"}
-       DECIDE -->|"是，错误仍在"| FRONT["错误在前半部分<br/>将搜索范围缩小到前半"]
-       DECIDE -->|"否，错误消失"| BACK["错误在后半部分<br/>将搜索范围缩小到后半"]
-       FRONT --> CHECK{"范围中只有一个节点?"}
-       BACK --> CHECK
-       CHECK -->|"否"| SPLIT
-       CHECK -->|"是"| OUTPUT["输出最小复现代码<br/>单个有问题的节点 + 最小输入"]
+这个流程图合并在上图中（下半部分的"二分搜索算法"）。
 
 这个过程相当于一个自动化的 ``git bisect`` ，但作用于计算图节点而不是 git 提交。
 
