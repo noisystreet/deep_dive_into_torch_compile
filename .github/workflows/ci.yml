@@ -5,6 +5,9 @@ on:
     branches: [master]
   pull_request:
     branches: [master]
+  schedule:
+    # 每周一 UTC 06:00 运行链接检查（北京时间 14:00）
+    - cron: '0 6 * * 1'
 
 permissions:
   contents: read
@@ -31,6 +34,9 @@ jobs:
       - name: Check RST syntax
         run: bash scripts/precommit-check.sh
 
+      - name: Validate glossary
+        run: python3 scripts/validate-glossary.py --ci
+
       - name: Build HTML
         run: make html SPHINXOPTS="-W"  # -W 将警告视为错误
 
@@ -50,3 +56,24 @@ jobs:
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
+
+  linkcheck:
+    # 仅在定时触发或手动触发时运行（不阻塞 PR）
+    if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Check external links
+        run: bash scripts/check-links.sh --ci --warn

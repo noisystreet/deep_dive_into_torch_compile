@@ -118,5 +118,7 @@ make html
 - **构建**：`make html`（产物在 `_build/html/`）。本地开发用 `make html` 即可；不要加 `-W`。CI（`.github/workflows/ci.yml`）使用 `make html SPHINXOPTS="-W"` 把警告当错误。
 - **预览**：`make serve` 会先构建再用 `python3 -m http.server` 启动预览，默认端口 8000（`PORT` 变量未设时为 8000）。在 cloud VM 中已验证 `http://localhost:8000/` 可正常访问并渲染。也可直接 `cd _build/html && python3 -m http.server 8000`。
 - **Lint / RST 检查**：`bash scripts/precommit-check.sh`（即 CI 的 "Check RST syntax" 步骤）。脚本会运行 Sphinx 语法解析；内联标记风格（如 `**bold**` 后紧跟中文标点）仅作提示，不阻塞 CI。
+- **术语表检查**：`python3 scripts/validate-glossary.py`（默认模式只检查未引用的 glossary 术语）。添加 `--suggest` 可扫描正文中 **加粗** 但 glossary 未收录的候选术语。
+- **外部链接检查**：`bash scripts/check-links.sh`（基于 Sphinx linkcheck 构建）。CI 中作为定时任务每周运行一次。
 - **git hooks**（仅在需要提交触发 pre-commit RST 检查时）：`git config --local core.hooksPath .githooks`。
 - 修改 `.rst` 内容后无热重载，需重新 `make html` 才能在预览中看到更新。
