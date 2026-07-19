@@ -20,6 +20,18 @@ CJK = set("\u4e00-\u9fff\u3000-\u303f\uff00-\uffef")
 # CJK 标点（这些跟在 markup 后面不需要空格也正常渲染）
 CJK_PUNCT = set("（）？。，：；！、】「」』")
 
+# RST 行内标记的有效前导字符
+# 根据 RST 规范，** 或 `` 等必须前面是这些字符之一才能被识别为行内标记
+RST_VALID_PRECEDING = set(" -:/'\"<({[")
+
+
+def is_valid_rst_start(prev):
+    """检查字符是否是合法的 RST 行内标记前缀。
+
+    合法的前缀：空格，或 - : / ' " < ( [ {
+    """
+    return prev in RST_VALID_PRECEDING
+
 
 def check_file(path, fix=False):
     """检查单个文件，返回 (issues_found, fixed_lines)"""
@@ -95,6 +107,18 @@ def check_file(path, fix=False):
                         )
                         if fix:
                             result.append(" ")
+                    # 非 CJK 且非 RST 合法前导字符紧挨 before ** → RST 不会将其识别为加粗
+                    # 例如 "1.**text**" 中的 "."，RST 要求 ** 必须前面是空格或 -:/'"<({[
+                    elif not is_cjk(prev) and not is_valid_rst_start(prev):
+                        issues.append(
+                            (
+                                path,
+                                lineno,
+                                f"'{prev}**' 前需要空格才被 RST 识别为加粗: ...{prev}**...",
+                            )
+                        )
+                        if fix:
+                            result.append(" ")
                     # 检测 ** 后有多余空格（内侧空格）并在 fix 模式下跳过
                     if next_ in (" ", "\t"):
                         issues.append(
@@ -147,6 +171,16 @@ def check_file(path, fix=False):
                     if is_cjk(prev) and prev not in CJK_PUNCT:
                         issues.append(
                             (path, lineno, f"'前 ``' 前缺少空格: ...{prev}``...")
+                        )
+                        if fix:
+                            result.append(" ")
+                    elif not is_cjk(prev) and not is_valid_rst_start(prev):
+                        issues.append(
+                            (
+                                path,
+                                lineno,
+                                f"'{prev}``' 前需要空格才被 RST 识别为字面量: ...{prev}``...",
+                            )
                         )
                         if fix:
                             result.append(" ")
