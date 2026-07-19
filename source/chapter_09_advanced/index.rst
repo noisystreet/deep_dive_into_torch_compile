@@ -13,3 +13,4 @@
    04_custom_op_and_kernel
    05_export_and_aot_inductor
    06_future_directions
+   07_quantization

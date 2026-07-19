@@ -23,7 +23,7 @@ torch.compile 是一个快速发展的项目。这一节梳理当前已知的局
 虽然 Inductor 已经覆盖了 ATen 的大部分算子，但仍有少量算子没有 lowering 或 decomposition：
 
 - 某些高阶操作（ ``while_loop`` 、 ``cond`` 、 ``map`` ）
-- 特定的量化算子
+- 量化算子的 lowering 仍在完善中（第 9.7 节）
 - 自定义的 C++ 扩展算子
 
 社区正在通过以下途径逐步扩大覆盖范围：

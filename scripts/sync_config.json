@@ -126,5 +126,17 @@
         "rst": "source/chapter_09_advanced/05_export_and_aot_inductor.rst",
         "section": "aot_compile",
         "label": "AOTInductor 编译导出"
+    },
+    {
+        "py": "examples/quantization_demo.py",
+        "rst": "source/chapter_09_advanced/07_quantization.rst",
+        "section": "dynamic_quant",
+        "label": "量化与 compile 示例"
+    },
+    {
+        "py": "examples/quantization_demo.py",
+        "rst": "source/chapter_09_advanced/07_quantization.rst",
+        "section": "perf_compare",
+        "label": "量化性能对比"
     }
 ]
